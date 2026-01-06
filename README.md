@@ -70,5 +70,6 @@ npm run build
 ### 2. 원하는 문서 양식 선택
 <img width="2432" height="812" alt="CleanShot 2026-01-06 at 09 18 15@2x" src="https://github.com/user-attachments/assets/c45d1c5b-ee48-4cd7-a70d-ef480e27d021" />
 
-### 3. <img width="1748" height="1508" alt="CleanShot 2026-01-06 at 09 19 31@2x" src="https://github.com/user-attachments/assets/2aa58405-28f2-4359-9747-75754d913aa0" />
+### 3. 양식에 맞게 작성 후 출력 
+<img width="1748" height="1508" alt="CleanShot 2026-01-06 at 09 19 31@2x" src="https://github.com/user-attachments/assets/2aa58405-28f2-4359-9747-75754d913aa0" />
 
