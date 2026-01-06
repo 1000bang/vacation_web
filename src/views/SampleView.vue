@@ -122,15 +122,17 @@
             <option :value="1">1일</option>
             <option :value="0.5">0.5일</option>
           </select>
-          <!-- 시작일과 종료일이 다를 때: 자동 계산 -->
+          <!-- 시작일과 종료일이 다를 때: 수정 가능한 입력 필드 (초기값은 자동 계산) -->
           <input
             v-else
             type="number"
-            :value="calculatedVacationDays"
-            readonly
-            class="readonly-input"
+            v-model.number="vacationForm.requestedVacationDays"
+            step="0.5"
+            min="0.5"
+            :placeholder="`기본값: ${calculatedVacationDays}일`"
             required
           />
+          <small v-if="!isSameDay" class="form-hint">시작일과 종료일 기준 자동 계산값: {{ calculatedVacationDays }}일 (수정 가능, 0.5일 단위 입력 가능)</small>
         </div>
 
         <div class="form-actions">
@@ -829,13 +831,22 @@ const calculatedVacationDays = computed(() => {
   return diffDays
 })
 
-// 시작일과 종료일이 변경될 때 신청일수 자동 업데이트
-watch([() => vacationForm.startDate, () => vacationForm.endDate], () => {
-  if (!isSameDay.value && vacationForm.startDate && vacationForm.endDate) {
-    vacationForm.requestedVacationDays = calculatedVacationDays.value
-  } else if (isSameDay.value) {
-    // 같은 날이면 초기화 (사용자가 선택하도록)
-    vacationForm.requestedVacationDays = 0
+// 시작일과 종료일이 변경될 때 신청일수 초기값 설정 (사용자가 수정 가능)
+// 날짜가 변경되면 계산된 값을 제안하지만, 사용자가 직접 수정할 수 있음
+watch([() => vacationForm.startDate, () => vacationForm.endDate], ([newStartDate, newEndDate], [oldStartDate, oldEndDate]) => {
+  // 날짜가 실제로 변경되었을 때만 업데이트
+  if (newStartDate !== oldStartDate || newEndDate !== oldEndDate) {
+    if (!isSameDay.value && vacationForm.startDate && vacationForm.endDate) {
+      // 시작일과 종료일이 다를 때는 계산된 값을 제안 (사용자가 수정 가능)
+      // 사용자가 이미 값을 입력했다면 유지, 아니면 계산된 값으로 설정
+      if (vacationForm.requestedVacationDays === 0 || vacationForm.requestedVacationDays === null || 
+          vacationForm.requestedVacationDays === undefined) {
+        vacationForm.requestedVacationDays = calculatedVacationDays.value
+      }
+    } else if (isSameDay.value) {
+      // 같은 날이면 초기화 (사용자가 선택하도록)
+      vacationForm.requestedVacationDays = 0
+    }
   }
 })
 
@@ -1114,6 +1125,112 @@ const rentalProposalForm = reactive({
 watch(() => rentalForm.contractStartDate, (newValue) => {
   if (newValue) {
     rentalForm.billingStartDate = newValue
+    // 계약 시작일이 변경되면 청구월세 기간도 재계산
+    calculateBillingPeriod()
+  }
+})
+
+// 청구월세 기간 계산 함수
+const calculateBillingPeriod = () => {
+  if (!rentalForm.contractStartDate || !rentalForm.month) {
+    return
+  }
+
+  try {
+    // 계약 시작일 파싱
+    const contractStart = new Date(rentalForm.contractStartDate + 'T00:00:00')
+    const contractDay = contractStart.getDate() // 계약 시작일의 일(day) 추출
+
+    // 현재 연도 가져오기
+    const currentYear = new Date().getFullYear()
+    const billingMonth = rentalForm.month // 청구월 (1-12)
+
+    // 청구월세 시작일: (청구월 - 1)월의 계약일자
+    // 예: 청구월이 1월이면 전년도 12월의 계약일자
+    let startYear = currentYear
+    let startMonth = billingMonth - 1
+    
+    if (startMonth === 0) {
+      // 청구월이 1월이면 전년도 12월
+      startMonth = 12
+      startYear = currentYear - 1
+    }
+
+    // 청구월세 시작일 생성
+    const billingStartDate = new Date(startYear, startMonth - 1, contractDay)
+    
+    // 청구월세 종료일: 청구월의 계약일자 - 1일
+    let endYear = currentYear
+    let endMonth = billingMonth
+    
+    // 청구월세 종료일 생성 (계약일자 - 1일)
+    const billingEndDate = new Date(endYear, endMonth - 1, contractDay)
+    billingEndDate.setDate(billingEndDate.getDate() - 1) // 하루 전
+
+    // 날짜를 YYYY-MM-DD 형식으로 변환
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    rentalForm.billingPeriodStartDate = formatDate(billingStartDate)
+    rentalForm.billingPeriodEndDate = formatDate(billingEndDate)
+    
+    // 월세 납입일 계산
+    if (rentalForm.paymentType === 'POSTPAID') {
+      // 후불: 청구월세 종료일 + 1일
+      const paymentDate = new Date(billingEndDate)
+      paymentDate.setDate(paymentDate.getDate() + 1) // 종료일에서 1일 후
+      rentalForm.paymentDate = formatDate(paymentDate)
+    } else if (rentalForm.paymentType === 'PREPAID') {
+      // 선불: 청구월세 시작일 - 1일
+      const paymentDate = new Date(billingStartDate)
+      paymentDate.setDate(paymentDate.getDate() - 1) // 시작일에서 1일 전
+      rentalForm.paymentDate = formatDate(paymentDate)
+    }
+  } catch (error) {
+    console.error('청구월세 기간 계산 오류:', error)
+  }
+}
+
+// 청구월이 변경될 때도 청구월세 기간 재계산
+watch(() => rentalForm.month, () => {
+  if (rentalForm.contractStartDate && rentalForm.month) {
+    calculateBillingPeriod()
+  }
+})
+
+// 청구월세 기간이 변경되면 월세 납입일도 자동 업데이트
+watch([() => rentalForm.billingPeriodStartDate, () => rentalForm.billingPeriodEndDate, () => rentalForm.paymentType], ([startDate, endDate, paymentType]) => {
+  if (!startDate || !endDate || !paymentType) {
+    return
+  }
+  
+  try {
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    if (paymentType === 'POSTPAID') {
+      // 후불: 청구월세 종료일 + 1일
+      const endDateObj = new Date(endDate + 'T00:00:00')
+      const paymentDate = new Date(endDateObj)
+      paymentDate.setDate(paymentDate.getDate() + 1) // 종료일에서 1일 후
+      rentalForm.paymentDate = formatDate(paymentDate)
+    } else if (paymentType === 'PREPAID') {
+      // 선불: 청구월세 시작일 - 1일
+      const startDateObj = new Date(startDate + 'T00:00:00')
+      const paymentDate = new Date(startDateObj)
+      paymentDate.setDate(paymentDate.getDate() - 1) // 시작일에서 1일 전
+      rentalForm.paymentDate = formatDate(paymentDate)
+    }
+  } catch (error) {
+    console.error('월세 납입일 계산 오류:', error)
   }
 })
 
@@ -1244,6 +1361,31 @@ const downloadFile = (blob: Blob, filename: string) => {
   window.URL.revokeObjectURL(url)
 }
 
+// Content-Disposition 헤더에서 파일명 추출
+const getFilenameFromResponse = (response: any, defaultFilename: string): string => {
+  try {
+    const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
+    if (contentDisposition) {
+      // Content-Disposition: attachment; filename="vacation_application_20260106.docx"
+      // 또는 Content-Disposition: attachment; filename*=UTF-8''vacation_application_20260106.docx
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (filenameMatch && filenameMatch[1]) {
+        let filename = filenameMatch[1].replace(/['"]/g, '')
+        // URL 인코딩된 파일명 디코딩
+        try {
+          filename = decodeURIComponent(filename)
+        } catch {
+          // 디코딩 실패 시 그대로 사용
+        }
+        return filename
+      }
+    }
+  } catch (error) {
+    console.warn('파일명 추출 실패:', error)
+  }
+  return defaultFilename
+}
+
 // 소속 필드 합치기 헬퍼 함수
 const combineDepartment = (division: string, team: string): string => {
   if (!division || !team) return ''
@@ -1353,10 +1495,14 @@ const submitVacationFormDocx = async () => {
       type: response.data.type
     })
 
+    // Content-Disposition 헤더에서 파일명 추출
+    const today = new Date().toLocaleDateString('ko-KR').replace(/\D/g, '');
+    const filename = getFilenameFromResponse(response, '휴가(결무)신청서_'+requestData.applicant+'_'+today+'.docx')
+
     const blob = new Blob([response.data], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     })
-    downloadFile(blob, 'vacation-application.docx')
+    downloadFile(blob, filename)
   } catch (error) {
     await handleError(error, 'DOCX 생성에 실패했습니다.')
   }
@@ -1406,10 +1552,14 @@ const submitRentalFormExcel = async () => {
       type: response.data.type
     })
 
+    // Content-Disposition 헤더에서 파일명 추출
+    const today = new Date().toLocaleDateString('ko-KR').replace(/\D/g, '');
+    const filename = getFilenameFromResponse(response, '월세지원청구서_'+requestData.applicant+'_'+today+'.xlsx')
+    
     const blob = new Blob([response.data], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     })
-    downloadFile(blob, 'rental-support-application.xlsx')
+    downloadFile(blob, filename)
   } catch (error) {
     await handleError(error, 'Excel 생성에 실패했습니다.')
   }
@@ -1427,10 +1577,16 @@ const submitRentalProposalForm = async () => {
     const response = await apiClient.post('/sample/rental_proposal', requestData, {
       responseType: 'blob'
     })
+    
+    // Content-Disposition 헤더에서 파일명 추출
+    //오늘날짜 yyyymmdd로 가져옴
+    const today = new Date().toLocaleDateString('ko-KR').replace(/\D/g, '');
+    const filename = getFilenameFromResponse(response, '월세지원품의서_'+requestData.applicant+'_'+today+'.docx')
+    
     const blob = new Blob([response.data], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     })
-    downloadFile(blob, 'rental-support-proposal.docx')
+    downloadFile(blob, filename)
   } catch (error) {
     await handleError(error, 'DOCX 생성에 실패했습니다.')
   }
@@ -1448,10 +1604,16 @@ const submitExpenseClaimForm = async () => {
     const response = await apiClient.post('/sample/expense_claim', requestData, {
       responseType: 'blob'
     })
+    
+    // Content-Disposition 헤더에서 파일명 추출
+    //오늘날짜 yyyymmdd로 가져옴
+    const today = new Date().toLocaleDateString('ko-KR').replace(/\D/g, '');
+    const filename = getFilenameFromResponse(response, '개인비용신청서_'+requestData.applicant+'_'+today+'.xlsx')
+    
     const blob = new Blob([response.data], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     })
-    downloadFile(blob, 'expense-claim.xlsx')
+    downloadFile(blob, filename)
   } catch (error) {
     await handleError(error, 'Excel 생성에 실패했습니다.')
   }
@@ -1599,6 +1761,12 @@ h3 {
   color: #e74c3c;
 }
 
+.form-hint {
+  font-size: 0.875rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -1729,6 +1897,8 @@ h3 {
   background-color: white;
   border: 1px solid #ddd;
   border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .expense-item > button {
@@ -1751,6 +1921,21 @@ h3 {
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.expense-item-grid .form-group {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.expense-item-grid .form-group input,
+.expense-item-grid .form-group select,
+.expense-item-grid .form-group textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .expense-item-grid .form-group.full-width {
@@ -1765,12 +1950,32 @@ h3 {
 }
 
 @media (max-width: 768px) {
+  .expense-item {
+    padding: 1rem;
+  }
+
   .expense-item-grid {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .expense-items-section {
+    padding: 1rem;
   }
 
   .radio-group {
     flex-direction: column;
+  }
+
+  .department-select-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px; /* iOS에서 zoom 방지 */
   }
 }
 </style>
