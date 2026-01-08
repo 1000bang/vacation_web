@@ -1,0 +1,726 @@
+<template>
+  <div class="rental-application-view">
+    <div class="header-section">
+      <h1>월세 지원 신청</h1>
+    </div>
+
+    <div class="form-wrapper">
+      <div class="form-container">
+        <h2>월세 지원 청구서</h2>
+        <form class="form" @submit.prevent="submitRentalApplication">
+          <div class="form-group">
+            <label>신청일자 <span class="required">*</span></label>
+            <input type="date" v-model="rentalForm.requestDate" required />
+          </div>
+
+          <div class="form-group">
+            <label>청구 월 <span class="required">*</span></label>
+            <select v-model.number="rentalForm.month" required class="form-select">
+              <option :value="null">월 선택</option>
+              <option v-for="month in 12" :key="month" :value="month">
+                {{ month }}월
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              월세 총 계약 시작일 <span class="required">*</span>
+            </label>
+            <input type="date" v-model="rentalForm.contractStartDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              월세 총 계약 종료일 <span class="required">*</span>
+            </label>
+            <input
+              type="date"
+              v-model="rentalForm.contractEndDate"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              계약 월세 금액(원) <span class="required">*</span>
+            </label>
+            <div class="input-with-unit">
+              <input
+                type="text"
+                v-model="rentalForm.contractMonthlyRent"
+                @input="handleNumberInput($event, 'contractMonthlyRent')"
+                @keypress="handleKeyPress"
+                required
+              />
+              <div v-if="rentalForm.contractMonthlyRent >= 10000" class="unit-text-below">
+                {{ formatKoreanWon(rentalForm.contractMonthlyRent) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>선불/후불 구분 <span class="required">*</span></label>
+            <select v-model="rentalForm.paymentType" required>
+              <option value="">선택하세요</option>
+              <option value="PREPAID">선불</option>
+              <option value="POSTPAID">후불</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              월세 청구 개시일 <span class="required">*</span>
+            </label>
+            <input type="date" v-model="rentalForm.billingStartDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              청구 월세 시작일 <span class="required">*</span>
+            </label>
+            <input type="date" v-model="rentalForm.billingPeriodStartDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              청구 월세 종료일 <span class="required">*</span>
+            </label>
+            <input type="date" v-model="rentalForm.billingPeriodEndDate" required />
+          </div>
+
+          <div class="form-group">
+            <label class="label-with-help">
+              월세 납입일 <span class="required">*</span>
+            </label>
+            <input type="date" v-model="rentalForm.paymentDate" required />
+          </div>
+
+          <div class="form-group">
+            <label>월세 납입 금액(원) <span class="required">*</span></label>
+            <div class="input-with-unit">
+              <input
+                type="text"
+                v-model="rentalForm.paymentAmount"
+                @input="handleNumberInput($event, 'paymentAmount')"
+                @keypress="handleKeyPress"
+                required
+              />
+              <div v-if="rentalForm.paymentAmount >= 10000" class="unit-text-below">
+                {{ formatKoreanWon(rentalForm.paymentAmount) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>월세 청구 금액(원) <span class="required">*</span></label>
+            <div class="input-with-unit">
+              <input
+                type="text"
+                v-model="rentalForm.billingAmount"
+                @input="handleNumberInput($event, 'billingAmount')"
+                @keypress="handleKeyPress"
+                required
+              />
+              <div v-if="rentalForm.billingAmount >= 10000" class="unit-text-below">
+                {{ formatKoreanWon(rentalForm.billingAmount) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="submit-button" :disabled="isSubmitting">
+              {{ isSubmitting ? '신청 중...' : '신청하기' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { createRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
+
+const router = useRouter()
+
+// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+const getTodayDate = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const rentalForm = reactive({
+  requestDate: getTodayDate(),
+  month: null as number | null,
+  contractStartDate: '',
+  contractEndDate: '',
+  contractMonthlyRent: 0,
+  paymentType: 'POSTPAID' as string, // 후불이 기본값
+  billingStartDate: '',
+  billingPeriodStartDate: '',
+  billingPeriodEndDate: '',
+  paymentDate: '',
+  paymentAmount: 0,
+  billingAmount: 0
+})
+
+const isSubmitting = ref(false)
+
+// 숫자를 한글 만원 단위로 변환
+const formatKoreanWon = (amount: number): string => {
+  if (!amount || amount < 10000) {
+    return ''
+  }
+
+  const man = Math.floor(amount / 10000)
+  const remainder = amount % 10000
+  const koreanNumbers = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구']
+
+  let manStr = ''
+  if (man === 1) {
+    manStr = '만'
+  } else if (man < 10) {
+    manStr = koreanNumbers[man] + '만'
+  } else if (man < 100) {
+    const ten = Math.floor(man / 10)
+    const one = man % 10
+    if (ten === 1) {
+      manStr = one > 0 ? '십' + koreanNumbers[one] + '만' : '십만'
+    } else {
+      manStr = koreanNumbers[ten] + '십' + (one > 0 ? koreanNumbers[one] : '') + '만'
+    }
+  } else if (man < 1000) {
+    const hundred = Math.floor(man / 100)
+    const remainder2 = man % 100
+    manStr = koreanNumbers[hundred] + '백'
+    if (remainder2 > 0) {
+      const ten = Math.floor(remainder2 / 10)
+      const one = remainder2 % 10
+      if (ten > 0) {
+        manStr += ten === 1 ? '십' : koreanNumbers[ten] + '십'
+      }
+      if (one > 0) {
+        manStr += koreanNumbers[one]
+      }
+    }
+    manStr += '만'
+  } else {
+    const thousand = Math.floor(man / 1000)
+    const remainder2 = man % 1000
+    manStr = koreanNumbers[thousand] + '천'
+    if (remainder2 > 0) {
+      const hundred = Math.floor(remainder2 / 100)
+      const remainder3 = remainder2 % 100
+      if (hundred > 0) {
+        manStr += koreanNumbers[hundred] + '백'
+      }
+      if (remainder3 > 0) {
+        const ten = Math.floor(remainder3 / 10)
+        const one = remainder3 % 10
+        if (ten > 0) {
+          manStr += ten === 1 ? '십' : koreanNumbers[ten] + '십'
+        }
+        if (one > 0) {
+          manStr += koreanNumbers[one]
+        }
+      }
+    }
+    manStr += '만'
+  }
+
+  let remainderStr = ''
+  if (remainder > 0) {
+    const cheon = Math.floor(remainder / 1000)
+    const remainderAfterCheon = remainder % 1000
+    const baek = Math.floor(remainderAfterCheon / 100)
+    
+    if (cheon > 0) {
+      remainderStr = cheon === 1 ? '천' : koreanNumbers[cheon] + '천'
+    }
+    
+    if (baek > 0) {
+      remainderStr += baek === 1 ? '백' : koreanNumbers[baek] + '백'
+    }
+  }
+
+  return manStr + remainderStr + '원'
+}
+
+// 숫자만 입력되도록 키 입력 차단
+const handleKeyPress = (event: KeyboardEvent) => {
+  const char = String.fromCharCode(event.which || event.keyCode)
+  if (!/[0-9]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+// 숫자만 입력하도록 처리
+const handleNumberInput = (event: Event, field: string) => {
+  const target = event.target as HTMLInputElement
+  const value = target.value.replace(/[^0-9]/g, '')
+  const numValue = value ? Number(value) : 0
+  
+  if (field === 'contractMonthlyRent') {
+    rentalForm.contractMonthlyRent = numValue
+    // 계약 월세 금액이 변경되면 납입 금액과 청구 금액 자동 계산
+    if (numValue > 0) {
+      rentalForm.paymentAmount = numValue
+      // 50만원 초과면 최대 25만원, 그 외는 1/2
+      if (numValue > 500000) {
+        rentalForm.billingAmount = 250000
+      } else {
+        rentalForm.billingAmount = Math.floor(numValue / 2)
+      }
+    }
+    target.value = value || ''
+  } else if (field === 'paymentAmount') {
+    rentalForm.paymentAmount = numValue
+    target.value = value || ''
+  } else if (field === 'billingAmount') {
+    rentalForm.billingAmount = numValue
+    target.value = value || ''
+  }
+}
+
+// 계약 월세 금액이 변경될 때 자동 계산
+watch(() => rentalForm.contractMonthlyRent, (newValue) => {
+  if (newValue && newValue > 0) {
+    // 월세 납입 금액 = 계약 월세 금액
+    rentalForm.paymentAmount = newValue
+    
+    // 월세 청구 금액 계산
+    // 50만원 초과면 최대 25만원, 그 외는 1/2
+    if (newValue > 500000) {
+      rentalForm.billingAmount = 250000
+    } else {
+      rentalForm.billingAmount = Math.floor(newValue / 2)
+    }
+  }
+})
+
+// 월세 지원 청구서: 계약 시작일이 변경될 때 청구 개시일 자동 설정
+watch(() => rentalForm.contractStartDate, (newValue) => {
+  if (newValue) {
+    rentalForm.billingStartDate = newValue
+    // 계약 시작일이 변경되면 청구월세 기간도 재계산
+    calculateBillingPeriod()
+  }
+})
+
+// 청구월세 기간 계산 함수
+const calculateBillingPeriod = () => {
+  if (!rentalForm.contractStartDate || !rentalForm.month || !rentalForm.requestDate) {
+    return
+  }
+
+  try {
+    // 계약 시작일 파싱
+    const contractStart = new Date(rentalForm.contractStartDate + 'T00:00:00')
+    const contractDay = contractStart.getDate() // 계약 시작일의 일(day) 추출
+
+    // 신청일자의 연도 가져오기 (현재 연도가 아닌 신청일자의 연도 사용)
+    const requestDate = new Date(rentalForm.requestDate + 'T00:00:00')
+    const requestYear = requestDate.getFullYear()
+    const requestMonth = requestDate.getMonth() + 1 // 신청일자의 월 (1-12)
+    const billingMonth: number = Number(rentalForm.month) // 청구월 (1-12)
+
+    // 청구월이 신청일자의 월보다 크면 전년도 기준 (예: 신청일자 1월, 청구월 12월 → 전년도 12월)
+    let baseYear = requestYear
+    if (billingMonth > requestMonth) {
+      baseYear = requestYear - 1
+    }
+
+    // 청구월세 시작일: (청구월 - 1)월의 계약일자
+    // 예: 청구월이 1월이면 전년도 12월의 계약일자
+    let startYear = baseYear
+    let startMonth: number = billingMonth - 1
+    
+    if (startMonth === 0) {
+      // 청구월이 1월이면 전년도 12월
+      startMonth = 12
+      startYear = baseYear - 1
+    }
+
+    // 청구월세 시작일 생성
+    const billingStartDate = new Date(startYear, startMonth - 1, contractDay)
+    
+    // 청구월세 종료일: 시작일 + 한달 - 1일
+    const billingEndDate = new Date(billingStartDate)
+    billingEndDate.setMonth(billingEndDate.getMonth() + 1) // 한달 추가
+    billingEndDate.setDate(billingEndDate.getDate() - 1) // 하루 전
+
+    // 날짜를 YYYY-MM-DD 형식으로 변환
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    rentalForm.billingPeriodStartDate = formatDate(billingStartDate)
+    rentalForm.billingPeriodEndDate = formatDate(billingEndDate)
+    
+    // 월세 납입일 계산
+    if (rentalForm.paymentType === 'POSTPAID') {
+      // 후불: 청구월세 종료일 + 1일
+      const paymentDate = new Date(billingEndDate)
+      paymentDate.setDate(paymentDate.getDate() + 1) // 종료일에서 1일 후
+      rentalForm.paymentDate = formatDate(paymentDate)
+    } else if (rentalForm.paymentType === 'PREPAID') {
+      // 선불: 청구월세 시작일 - 1일
+      const paymentDate = new Date(billingStartDate)
+      paymentDate.setDate(paymentDate.getDate() - 1) // 시작일에서 1일 전
+      rentalForm.paymentDate = formatDate(paymentDate)
+    }
+  } catch (error) {
+    console.error('청구월세 기간 계산 오류:', error)
+  }
+}
+
+// 청구월이 변경될 때도 청구월세 기간 재계산
+watch(() => rentalForm.month, () => {
+  if (rentalForm.contractStartDate && rentalForm.month) {
+    calculateBillingPeriod()
+  }
+})
+
+// 청구월세 기간이 변경되면 월세 납입일도 자동 업데이트
+watch([() => rentalForm.billingPeriodStartDate, () => rentalForm.billingPeriodEndDate, () => rentalForm.paymentType], ([startDate, endDate, paymentType]) => {
+  if (!startDate || !endDate || !paymentType) {
+    return
+  }
+  
+  try {
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    if (paymentType === 'POSTPAID') {
+      // 후불: 청구월세 종료일 + 1일
+      const endDateObj = new Date(endDate + 'T00:00:00')
+      const paymentDate = new Date(endDateObj)
+      paymentDate.setDate(paymentDate.getDate() + 1) // 종료일에서 1일 후
+      rentalForm.paymentDate = formatDate(paymentDate)
+    } else if (paymentType === 'PREPAID') {
+      // 선불: 청구월세 시작일 - 1일
+      const startDateObj = new Date(startDate + 'T00:00:00')
+      const paymentDate = new Date(startDateObj)
+      paymentDate.setDate(paymentDate.getDate() - 1) // 시작일에서 1일 전
+      rentalForm.paymentDate = formatDate(paymentDate)
+    }
+  } catch (error) {
+    console.error('월세 납입일 계산 오류:', error)
+  }
+})
+
+// 신청일자 기준으로 청구월 자동 계산
+// 15일 전이면 전달, 15일 이후면 이번달
+const calculateBillingMonth = (requestDate: string): number | null => {
+  if (!requestDate) return null
+  
+  try {
+    const request = new Date(requestDate + 'T00:00:00')
+    const day = request.getDate()
+    const currentMonth = request.getMonth() + 1 // 1-12
+    const currentYear = request.getFullYear()
+    
+    if (day <= 15) {
+      // 15일 전이면 전달
+      if (currentMonth === 1) {
+        return 12 // 전년도 12월
+      } else {
+        return currentMonth - 1
+      }
+    } else {
+      // 15일 이후면 이번달
+      return currentMonth
+    }
+  } catch (error) {
+    console.error('청구월 계산 오류:', error)
+    return null
+  }
+}
+
+// 신청일자가 변경될 때 청구월 자동 계산
+watch(() => rentalForm.requestDate, (newValue) => {
+  if (newValue) {
+    const calculatedMonth = calculateBillingMonth(newValue)
+    if (calculatedMonth !== null) {
+      rentalForm.month = calculatedMonth
+      // 청구월이 변경되면 청구월세 기간도 재계산
+      if (rentalForm.contractStartDate) {
+        calculateBillingPeriod()
+      }
+    }
+  }
+})
+
+
+// RentalSupport 정보로 폼 채우기
+const fillFormFromRentalSupport = (rentalSupport: any) => {
+  if (!rentalSupport) return
+  
+  // 계약 정보
+  if (rentalSupport.contractStartDate) {
+    rentalForm.contractStartDate = rentalSupport.contractStartDate
+  }
+  if (rentalSupport.contractEndDate) {
+    rentalForm.contractEndDate = rentalSupport.contractEndDate
+  }
+  if (rentalSupport.contractMonthlyRent) {
+    rentalForm.contractMonthlyRent = rentalSupport.contractMonthlyRent
+  }
+  if (rentalSupport.billingAmount) {
+    rentalForm.billingAmount = rentalSupport.billingAmount
+  }
+  if (rentalSupport.billingStartDate) {
+    rentalForm.billingStartDate = rentalSupport.billingStartDate
+  }
+  
+  // 납입 금액은 계약 월세 금액과 동일
+  if (rentalSupport.contractMonthlyRent) {
+    rentalForm.paymentAmount = rentalSupport.contractMonthlyRent
+  }
+}
+
+onMounted(async () => {
+  // 신청일자 기준으로 청구월 자동 계산
+  const calculatedMonth = calculateBillingMonth(rentalForm.requestDate)
+  if (calculatedMonth !== null) {
+    rentalForm.month = calculatedMonth
+  }
+  
+  // 월세 지원 정보 목록 조회하여 가장 최신 정보로 폼 채우기
+  try {
+    const response = await getRentalSupportList()
+    const rentalSupportList = response.resultMsg
+    
+    if (rentalSupportList && rentalSupportList.length > 0) {
+      // seq가 가장 큰 것(가장 최신)을 선택
+      const latestRentalSupport = rentalSupportList.reduce((prev: any, current: any) => {
+        return (prev.seq > current.seq) ? prev : current
+      })
+      
+      fillFormFromRentalSupport(latestRentalSupport)
+    }
+  } catch (error) {
+    console.error('월세 지원 정보 조회 실패:', error)
+    // 에러가 발생해도 계속 진행 (새로 작성하는 경우)
+  }
+})
+
+const submitRentalApplication = async () => {
+  if (!rentalForm.requestDate || !rentalForm.month || !rentalForm.contractStartDate || 
+      !rentalForm.contractEndDate || !rentalForm.contractMonthlyRent || !rentalForm.paymentType ||
+      !rentalForm.billingStartDate || !rentalForm.billingPeriodStartDate || 
+      !rentalForm.billingPeriodEndDate || !rentalForm.paymentDate || 
+      !rentalForm.paymentAmount || !rentalForm.billingAmount) {
+    alert('모든 필수 항목을 입력해주세요.')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    const request: RentalSupportRequest = {
+      requestDate: rentalForm.requestDate,
+      month: rentalForm.month,
+      contractStartDate: rentalForm.contractStartDate,
+      contractEndDate: rentalForm.contractEndDate,
+      contractMonthlyRent: rentalForm.contractMonthlyRent,
+      paymentType: rentalForm.paymentType as 'PREPAID' | 'POSTPAID',
+      billingStartDate: rentalForm.billingStartDate,
+      billingPeriodStartDate: rentalForm.billingPeriodStartDate,
+      billingPeriodEndDate: rentalForm.billingPeriodEndDate,
+      paymentDate: rentalForm.paymentDate,
+      paymentAmount: rentalForm.paymentAmount,
+      billingAmount: rentalForm.billingAmount
+    }
+    
+    const response = await createRentalSupportApplication(request)
+    // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
+    if (response.resultMsg && response.resultMsg.seq) {
+      router.push({
+        path: '/application-success',
+        query: {
+          type: 'rental',
+          seq: response.resultMsg.seq
+        }
+      })
+    } else {
+      router.push('/my-applications')
+    }
+  } catch (error: any) {
+    console.error('월세 지원 신청 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '월세 지원 신청에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+</script>
+
+<style scoped>
+.rental-application-view {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 2rem;
+}
+
+.header-section {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  text-align: left;
+}
+
+.header-section h1 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin: 0;
+  padding-left: 30px;
+}
+
+.form-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.form-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-container h2 {
+  margin-bottom: 1.5rem;
+  color: #1226aa;
+  border-bottom: 2px solid #1226aa;
+  padding-bottom: 0.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #333;
+}
+
+.label-with-help {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.required {
+  color: #e74c3c;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #17ccff;
+  box-shadow: 0 0 0 3px rgba(23, 204, 255, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.department-select-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.department-select {
+  flex: 1;
+}
+
+.department-select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.input-with-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.unit-text-below {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.form-actions {
+  margin-top: 2rem;
+}
+
+.submit-button {
+  padding: 1rem 2rem;
+  background-color: #1226aa;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #0f1f88;
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .rental-application-view {
+    padding: 1rem;
+  }
+
+  .form-container {
+    padding: 1.5rem;
+  }
+
+  .department-select-group {
+    flex-direction: column;
+  }
+}
+</style>
