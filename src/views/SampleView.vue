@@ -92,6 +92,8 @@
             <option value="BYEONGGA">병가</option>
             <option value="GITA">기타</option>
             <option value="YEBIGUN">예비군</option>
+            <option value="AM_HALF">오전반차</option>
+            <option value="PM_HALF">오후반차</option>
           </select>
         </div>
 
@@ -836,7 +838,10 @@ const calculatedVacationDays = computed(() => {
 watch([() => vacationForm.startDate, () => vacationForm.endDate], ([newStartDate, newEndDate], [oldStartDate, oldEndDate]) => {
   // 날짜가 실제로 변경되었을 때만 업데이트
   if (newStartDate !== oldStartDate || newEndDate !== oldEndDate) {
-    if (!isSameDay.value && vacationForm.startDate && vacationForm.endDate) {
+    // 오전반차 또는 오후반차인 경우 항상 0.5로 설정
+    if (vacationForm.vacationType === 'AM_HALF' || vacationForm.vacationType === 'PM_HALF') {
+      vacationForm.requestedVacationDays = 0.5
+    } else if (!isSameDay.value && vacationForm.startDate && vacationForm.endDate) {
       // 시작일과 종료일이 다를 때는 계산된 값을 제안 (사용자가 수정 가능)
       // 사용자가 이미 값을 입력했다면 유지, 아니면 계산된 값으로 설정
       if (vacationForm.requestedVacationDays === 0 || vacationForm.requestedVacationDays === null || 
@@ -858,13 +863,20 @@ const vacationTypeMap: Record<string, string> = {
   'GYEOLGEUN': '결근',
   'BYEONGGA': '병가',
   'GITA': '기타',
-  'YEBIGUN': '예비군'
+  'YEBIGUN': '예비군',
+  'AM_HALF': '오전 반차',
+  'PM_HALF': '오후 반차'
 }
 
-// 휴가 구분이 변경될 때 사유 자동 입력
+// 휴가 구분이 변경될 때 사유 자동 입력 및 신청연차일수 설정
 watch(() => vacationForm.vacationType, (newType) => {
   if (newType && vacationTypeMap[newType]) {
     vacationForm.reason = vacationTypeMap[newType]
+    
+    // 오전반차 또는 오후반차 선택 시 신청연차일수를 0.5로 설정
+    if (newType === 'AM_HALF' || newType === 'PM_HALF') {
+      vacationForm.requestedVacationDays = 0.5
+    }
   } else if (!newType) {
     vacationForm.reason = ''
   }
@@ -1132,7 +1144,7 @@ watch(() => rentalForm.contractStartDate, (newValue) => {
 
 // 청구월세 기간 계산 함수
 const calculateBillingPeriod = () => {
-  if (!rentalForm.contractStartDate || !rentalForm.month) {
+  if (!rentalForm.contractStartDate || !rentalForm.month || !rentalForm.requestDate) {
     return
   }
 
@@ -1141,30 +1153,35 @@ const calculateBillingPeriod = () => {
     const contractStart = new Date(rentalForm.contractStartDate + 'T00:00:00')
     const contractDay = contractStart.getDate() // 계약 시작일의 일(day) 추출
 
-    // 현재 연도 가져오기
-    const currentYear = new Date().getFullYear()
-    const billingMonth = rentalForm.month // 청구월 (1-12)
+    // 신청일자의 연도 가져오기 (현재 연도가 아닌 신청일자의 연도 사용)
+    const requestDate = new Date(rentalForm.requestDate + 'T00:00:00')
+    const requestYear = requestDate.getFullYear()
+    const requestMonth = requestDate.getMonth() + 1 // 신청일자의 월 (1-12)
+    const billingMonth: number = Number(rentalForm.month) // 청구월 (1-12)
+
+    // 청구월이 신청일자의 월보다 크면 전년도 기준 (예: 신청일자 1월, 청구월 12월 → 전년도 12월)
+    let baseYear = requestYear
+    if (billingMonth > requestMonth) {
+      baseYear = requestYear - 1
+    }
 
     // 청구월세 시작일: (청구월 - 1)월의 계약일자
     // 예: 청구월이 1월이면 전년도 12월의 계약일자
-    let startYear = currentYear
-    let startMonth = billingMonth - 1
+    let startYear = baseYear
+    let startMonth: number = billingMonth - 1
     
     if (startMonth === 0) {
       // 청구월이 1월이면 전년도 12월
       startMonth = 12
-      startYear = currentYear - 1
+      startYear = baseYear - 1
     }
 
     // 청구월세 시작일 생성
     const billingStartDate = new Date(startYear, startMonth - 1, contractDay)
     
-    // 청구월세 종료일: 청구월의 계약일자 - 1일
-    let endYear = currentYear
-    let endMonth = billingMonth
-    
-    // 청구월세 종료일 생성 (계약일자 - 1일)
-    const billingEndDate = new Date(endYear, endMonth - 1, contractDay)
+    // 청구월세 종료일: 시작일 + 한달 - 1일
+    const billingEndDate = new Date(billingStartDate)
+    billingEndDate.setMonth(billingEndDate.getMonth() + 1) // 한달 추가
     billingEndDate.setDate(billingEndDate.getDate() - 1) // 하루 전
 
     // 날짜를 YYYY-MM-DD 형식으로 변환
@@ -1625,21 +1642,20 @@ const submitExpenseClaimForm = async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .header-section {
-  text-align: center;
+  text-align: left;
   margin-bottom: 2rem;
-  padding-top: 2rem;
 }
 
-.header-logo {
-  max-width: 200px;
-  height: auto;
-  margin-bottom: 1.5rem;
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
+.header-section h1 {
+  color: #2c3e50;
+  font-size: 2rem;
+  margin: 0;
+  padding-left: 30px;
 }
 
 h1 {
@@ -1649,8 +1665,8 @@ h1 {
 
 h2 {
   margin-bottom: 1.5rem;
-  color: #42b983;
-  border-bottom: 2px solid #42b983;
+  color: #1226aa;
+  border-bottom: 2px solid #1226aa;
   padding-bottom: 0.5rem;
 }
 
@@ -1685,8 +1701,8 @@ h3 {
 }
 
 .radio-label:hover:not(:has(input:disabled)) {
-  border-color: #42b983;
-  background-color: #f0fdf4;
+  border-color: #17ccff;
+  background-color: #e6f7ff;
 }
 
 .radio-input {
@@ -1733,9 +1749,9 @@ h3 {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid #42b983;
+  border: 1px solid #17ccff;
   background-color: white;
-  color: #42b983;
+  color: #17ccff;
   font-size: 0.875rem;
   font-weight: bold;
   cursor: pointer;
@@ -1748,7 +1764,7 @@ h3 {
 }
 
 .help-button:hover {
-  background-color: #42b983;
+  background-color: #17ccff;
   color: white;
   transform: scale(1.1);
 }
@@ -1781,8 +1797,8 @@ h3 {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #42b983;
-  box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.1);
+  border-color: #17ccff;
+  box-shadow: 0 0 0 3px rgba(23, 204, 255, 0.1);
 }
 
 .department-select-group {
@@ -1817,7 +1833,7 @@ h3 {
 }
 
 .unit-text-below {
-  color: #42b983;
+  color: #17ccff;
   font-weight: 500;
   font-size: 0.85rem;
   text-align: right;
@@ -1842,12 +1858,12 @@ h3 {
 }
 
 .btn-primary {
-  background-color: #42b983;
+  background-color: #1226aa;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #35a372;
+  background-color: #0f1f88;
 }
 
 .btn-secondary {
@@ -1913,7 +1929,7 @@ h3 {
 
 .expense-item h4 {
   margin-bottom: 1rem;
-  color: #42b983;
+  color: #1226aa;
 }
 
 .expense-item-grid {
