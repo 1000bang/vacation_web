@@ -14,9 +14,9 @@
         </p>
 
         <div class="button-section">
-          <RouterLink to="/sample" class="btn btn-primary">
+          <a @click="handleDocumentCreate" class="btn btn-primary">
             개인비용 문서 생성하기
-          </RouterLink>
+          </a>
         </div>
 
         <div class="footer-section">
@@ -34,8 +34,29 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import logoImage from '@/assets/image/logo/KP_CI_simbol.png'
+
+const router = useRouter()
+
+const handleDocumentCreate = () => {
+  // localStorage에서 user 정보 확인
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr)
+      if (user && user.userId) {
+        // 로그인한 상태면 /document로 이동
+        router.push('/document')
+        return
+      }
+    } catch (e) {
+      console.error('Failed to parse user data:', e)
+    }
+  }
+  // 로그인하지 않은 상태면 /sample로 이동
+  router.push('/sample')
+}
 </script>
 
 <style scoped>
@@ -121,14 +142,14 @@ h1 {
 }
 
 .btn-primary {
-  background-color: #42b983;
+  background-color: #1226aa;
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #35a372;
+  background-color: #0f1f88;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(66, 185, 131, 0.3);
+  box-shadow: 0 6px 20px rgba(18, 38, 170, 0.3);
 }
 
 .footer-section {
