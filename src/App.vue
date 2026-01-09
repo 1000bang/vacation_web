@@ -16,11 +16,17 @@
             <span class="user-name">{{ user.division }}/{{ user.team }} {{ user.name }} {{ user.position }}</span>
             <button @click="handleMyInfo" class="btn btn-my-info">
               <span class="btn-text">내 정보</span>
-              <span class="btn-emoji">👤</span>
+              <div class="btn-icon-wrapper">
+                <img :src="myPageImage" alt="내 정보" class="btn-icon" />
+                <span class="btn-icon-label">My</span>
+              </div>
             </button>
             <button @click="handleLogout" class="btn-logout">
               <span class="btn-text">로그아웃</span>
-              <span class="btn-emoji">🚪</span>
+              <div class="btn-icon-wrapper">
+                <img :src="logoutImage" alt="로그아웃" class="btn-icon" />
+                <span class="btn-icon-label">Logout</span>
+              </div>
             </button>
           </div>
           <div v-else class="auth-buttons">
@@ -40,6 +46,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import logoImage from '@/assets/image/logo/KP_CI_simbol.png'
+import myPageImage from '@/assets/image/logo/Mypage.png'
+import logoutImage from '@/assets/image/logo/logout.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -177,6 +185,9 @@ const handleLogout = () => {
 }
 
 .btn-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.5rem 1rem;
   background-color: #0d1f7a;
   color: white;
@@ -185,6 +196,7 @@ const handleLogout = () => {
   font-size: 0.9rem;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  gap: 0.25rem;
 }
 
 .btn-logout:hover {
@@ -197,7 +209,9 @@ const handleLogout = () => {
 }
 
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.6rem 1.2rem;
   border: none;
   border-radius: 6px;
@@ -206,6 +220,7 @@ const handleLogout = () => {
   text-decoration: none;
   cursor: pointer;
   transition: all 0.3s ease;
+  gap: 0.25rem;
 }
 
 .btn-secondary {
@@ -235,6 +250,63 @@ const handleLogout = () => {
 
 .btn-my-info:hover {
   background-color: #14b3e6;
+}
+
+/* 버튼 내부 텍스트/이미지 기본 스타일 */
+.btn-text {
+  display: inline;
+}
+
+.btn-icon-wrapper {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-icon {
+  display: none;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.btn-icon-label {
+  display: none;
+  font-size: 0.65rem;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.btn-logout .btn-text {
+  display: inline;
+}
+
+.btn-logout .btn-icon-wrapper {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-logout .btn-icon {
+  display: none;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.btn-logout .btn-icon-label {
+  display: none;
+  font-size: 0.65rem;
+  color: #2c3e50;
+  font-weight: 700;
 }
 
 .main-content {
@@ -282,22 +354,33 @@ const handleLogout = () => {
     position: relative;
   }
 
-  .btn-text {
-    display: inline;
-  }
-
-  .btn-emoji {
-    display: none;
-  }
-
   .btn-logout {
     padding: 0.5rem;
     min-width: 40px;
   }
+  
+  /* 768px 이하에서는 텍스트와 이미지 모두 표시 (텍스트 우선) */
+  .user-info .btn .btn-text,
+  .user-info .btn-text {
+    display: inline !important;
+  }
+
+  .user-info .btn .btn-icon,
+  .user-info .btn-icon {
+    display: none !important;
+  }
+
+  .user-info .btn-logout .btn-text {
+    display: inline !important;
+  }
+
+  .user-info .btn-logout .btn-icon {
+    display: none !important;
+  }
 }
 
-/* 작은 모바일 화면 (480px 이하) */
-@media (max-width: 480px) {
+/* 작은 모바일 화면 (600px 이하) */
+@media (max-width: 600px) {
   .header-content {
     padding: 0.5rem;
   }
@@ -313,25 +396,87 @@ const handleLogout = () => {
   .btn {
     padding: 0.4rem 0.5rem;
     font-size: 0.75rem;
+    min-width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent !important;
+    gap: 2px;
   }
 
-  /* 작은 화면에서는 텍스트 숨기고 이모지만 표시 */
-  .btn-text {
-    display: none;
+  .btn-logout {
+    padding: 0.4rem 0.5rem;
+    min-width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent !important;
+    gap: 2px;
   }
 
-  .btn-emoji {
-    display: inline;
-    font-size: 1.2rem;
+  /* 작은 화면에서는 텍스트 숨기고 이미지와 라벨 표시 */
+  .user-info .btn .btn-text,
+  .user-info .btn-text {
+    display: none !important;
+    visibility: hidden !important;
   }
 
-  .btn-logout .btn-text {
-    display: none;
+  .user-info .btn .btn-icon-wrapper,
+  .user-info .btn-icon-wrapper {
+    display: flex !important;
+    visibility: visible !important;
   }
 
-  .btn-logout .btn-emoji {
-    display: inline;
-    font-size: 1.2rem;
+  .user-info .btn .btn-icon,
+  .user-info .btn-icon {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 4px;
+  }
+
+  .user-info .btn .btn-icon-label,
+  .user-info .btn-icon-label {
+    display: block !important;
+    visibility: visible !important;
+    font-size: 0.6rem;
+    color: #2c3e50;
+    font-weight: 700;
+  }
+
+  .user-info .btn-logout .btn-text {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .user-info .btn-logout .btn-icon-wrapper {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .user-info .btn-logout .btn-icon {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 4px;
+  }
+
+  .user-info .btn-logout .btn-icon-label {
+    display: block !important;
+    visibility: visible !important;
+    font-size: 0.6rem;
+    color: #2c3e50;
+    font-weight: 700;
   }
 }
 </style>
