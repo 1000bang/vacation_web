@@ -1,83 +1,58 @@
 # Vacation Web
 
-Vue3 + TypeScript로 작성된 프론트엔드 프로젝트입니다.
+## v2 변경사항 
 
-## 프로젝트 구조 설명
+### homepage
+<img width="1085" height="1010" alt="홈페이지" src="https://github.com/user-attachments/assets/6d684f3e-318e-47c5-9c44-fb24d02fbc75" />
 
-```
-web/
-├── public/               # 정적 파일
-│   └── favicon.png      # 파비콘
-├── src/
-│   ├── api/              # API 통신 관련 파일
-│   │   └── axios.ts      # axios 인스턴스 설정
-│   ├── assets/           # 정적 파일 (CSS, 이미지, 폰트 등)
-│   │   ├── fonts/        # 폰트 파일
-│   │   ├── image/        # 이미지 파일
-│   │   │   ├── help/     # 도움말 이미지
-│   │   │   └── logo/     # 로고 이미지
-│   │   └── main.css      # 전역 스타일
-│   ├── components/       # 재사용 가능한 컴포넌트
-│   │   └── HelpModal.vue # 도움말 모달 컴포넌트
-│   ├── router/           # Vue Router 설정
-│   │   └── index.ts      # 라우터 정의
-│   ├── stores/           # Pinia 상태 관리
-│   │   └── counter.ts    # 예제 스토어
-│   ├── views/            # 페이지 컴포넌트
-│   │   ├── HomeView.vue  # 홈 페이지
-│   │   ├── AboutView.vue # About 페이지
-│   │   └── SampleView.vue # 문서 생성 페이지
-│   ├── App.vue           # 루트 컴포넌트
-│   └── main.ts           # 애플리케이션 진입점
-├── .eslintrc.cjs         # ESLint 설정
-├── .gitignore            # Git 무시 파일
-├── .prettierrc.json      # Prettier 설정
-├── env.d.ts              # 환경 변수 타입 정의
-├── index.html            # HTML 템플릿
-├── package.json          # 프로젝트 의존성 및 스크립트
-├── package-lock.json     # 패키지 잠금 파일
-├── tsconfig.json         # TypeScript 설정
-├── tsconfig.node.json    # Node.js용 TypeScript 설정
-└── vite.config.ts        # Vite 빌드 도구 설정
-```
+* 로그인하지 않은 상태에서 개인 비용 생성하기 클릭 시 v1의 문서생성기로 이동
 
-## 주요 기술 스택
+### 로그인 
+<img width="1085" height="1010" alt="로그인" src="https://github.com/user-attachments/assets/39f74f9c-c049-48b1-ad01-9172cd4c1d85" />
 
-- `Vue 3`, `TypeScript`, `Vite`, `Vue Router`,`Pinia`, `Axios`, `ESLint + Prettier`
 
-## 설치 및 실행
+### 회원가입
+<img width="1085" height="1010" alt="회원가입" src="https://github.com/user-attachments/assets/093d89d4-92bf-403a-892b-d2174091e2c9" />
 
-### 1. 의존성 설치
+- 승인되지 않은 사용자 로그인 시도 시 아래 그림 
+<img width="1085" height="1010" alt="승인되지 않은 사용자 로그인 시 " src="https://github.com/user-attachments/assets/55ae5bd3-2910-403f-a4f6-4ff0d9cf37fd" />
 
-```bash
-cd web
-npm install
-```
+- 승인방법 : 관리자가 사용자 관리 > 사용자 정보 수정을 통해 승인 
+<img width="1085" height="1010" alt="CleanShot 2026-01-09 at 16 17 38" src="https://github.com/user-attachments/assets/ad8187ab-0339-4754-a26e-e878569a877a" />
+<img width="1085" height="1010" alt="CleanShot 2026-01-09 at 16 18 06" src="https://github.com/user-attachments/assets/c4bdc0a2-d4a0-4fbb-9abe-a30701112fad" />
 
-### 2. 개발 서버 실행
 
-```bash
-npm run dev
-```
+### 대시보드 (일반 사용자)
+<img width="1085" height="1010" alt="대시보드" src="https://github.com/user-attachments/assets/06c03862-6e58-4092-b1db-3cad300356ee" />
 
-개발 서버는 `http://localhost:3000`에서 실행됩니다.
+### 마이 페이지 
+최초 로그인 시 연차정보 수정 가능 및 월세 품의 정보 등록 
+<img width="707" height="518" alt="연차정보 수정" src="https://github.com/user-attachments/assets/76aae64a-40e9-4a47-8adb-e6ad791bcdc7" />
 
-### 3. 빌드
+<img width="698" height="686" alt="수정된 화면" src="https://github.com/user-attachments/assets/6f619fb9-86f4-456c-96d1-cfbb7e2d0063" />
 
-```bash
-npm run build
-```
+### 휴가 결무 신청 
 
-빌드된 파일은 `dist/` 폴더에 생성됩니다.
+<img width="871" height="797" alt="CleanShot 2026-01-09 at 16 23 43" src="https://github.com/user-attachments/assets/368c2324-cf64-4ff6-bc28-346ec8d4639d" />
+<img width="514" height="659" alt="CleanShot 2026-01-09 at 16 24 17" src="https://github.com/user-attachments/assets/0e8f38a4-29c5-4640-97ff-cce210440f3d" />
+<img width="315" height="67" alt="CleanShot 2026-01-09 at 16 24 42" src="https://github.com/user-attachments/assets/05e5dfd1-7a9c-441f-983b-a44ec6ad1718" />
 
-## 이미지 
+### 개인비용신청
 
-### 1. home
-<img width="2880" height="1800" alt="CleanShot 2026-01-06 at 09 17 09@2x" src="https://github.com/user-attachments/assets/4cea2b8d-0480-4053-84a1-9bdcee52b365" />
+<img width="886" height="904" alt="CleanShot 2026-01-09 at 16 26 02" src="https://github.com/user-attachments/assets/44e20ea5-f974-42da-bafb-14ecfb4f378e" />
+<img width="502" height="566" alt="CleanShot 2026-01-09 at 16 26 23" src="https://github.com/user-attachments/assets/87386131-86eb-466f-963c-631923ede177" />
 
-### 2. 원하는 문서 양식 선택
-<img width="2432" height="812" alt="CleanShot 2026-01-06 at 09 18 15@2x" src="https://github.com/user-attachments/assets/c45d1c5b-ee48-4cd7-a70d-ef480e27d021" />
+### 월세 지원 신청 
+<img width="914" height="1289" alt="CleanShot 2026-01-09 at 16 27 36" src="https://github.com/user-attachments/assets/1f645498-8666-4271-a9cc-e5e5fe237490" />
+<img width="475" height="594" alt="CleanShot 2026-01-09 at 16 27 55" src="https://github.com/user-attachments/assets/8bc38634-1954-49a0-90fb-885dde2bc431" />
 
-### 3. 양식에 맞게 작성 후 출력 
-<img width="1748" height="1508" alt="CleanShot 2026-01-06 at 09 19 31@2x" src="https://github.com/user-attachments/assets/2aa58405-28f2-4359-9747-75754d913aa0" />
+### 내 신청 목록 
+<img width="475" height="594" alt="CleanShot 2026-01-09 at 16 27 55" src="https://github.com/user-attachments/assets/8bc38634-1954-49a0-90fb-885dde2bc431" />
+<img width="937" height="1173" alt="CleanShot 2026-01-09 at 16 29 52" src="https://github.com/user-attachments/assets/ba467446-3dc3-47f7-82c3-986772a7536b" />
+
+### 사용자 관리
+<img width="1090" height="282" alt="CleanShot 2026-01-09 at 16 30 15" src="https://github.com/user-attachments/assets/78c67bfe-db68-40fb-8be2-033d5bf14e95" />
+
+### 사용자 정보 수정 (관리자, 각팀 팀장, 각팀 본부장 가능)
+<img width="884" height="1380" alt="CleanShot 2026-01-09 at 16 30 50" src="https://github.com/user-attachments/assets/f1838f7d-5d3c-4090-bec7-41079e49f726" />
 
