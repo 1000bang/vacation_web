@@ -272,7 +272,7 @@ const isDownloading = ref<number | null>(null)
 const isDeleting = ref<number | null>(null)
 
 // 날짜 포맷팅
-const formatDate = (dateString: string): string => {
+const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return ''
   const date = new Date(dateString)
   const year = date.getFullYear()

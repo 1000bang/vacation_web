@@ -530,7 +530,6 @@ const calculateBillingMonth = (requestDate: string): number | null => {
     const request = new Date(requestDate + 'T00:00:00')
     const day = request.getDate()
     const currentMonth = request.getMonth() + 1 // 1-12
-    const currentYear = request.getFullYear()
     
     if (day <= 15) {
       // 15일 전이면 전달

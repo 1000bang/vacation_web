@@ -371,12 +371,6 @@ const saveUserInfo = async () => {
   }
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('ko-KR')
-}
-
 const loadVacationInfo = async () => {
   try {
     const response = await getUserVacationInfoByUserId(userId.value)

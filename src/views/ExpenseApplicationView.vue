@@ -274,7 +274,7 @@ const handleKeyPress = (event: KeyboardEvent) => {
 const handleExpenseAmountInput = (event: Event, index: number) => {
   const target = event.target as HTMLInputElement
   const value = target.value.replace(/[^0-9]/g, '')
-  const numValue = value ? Number(value) : null
+  const numValue = value ? Number(value) : 0
   
   if (expenseForm.expenseItems[index]) {
     expenseForm.expenseItems[index].amount = numValue

@@ -41,8 +41,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { downloadVacationDocument, getVacationHistory, type VacationHistory } from '@/api/vacation'
-import { downloadExpenseClaim, downloadRentalSupportApplication, getExpenseClaim, getRentalSupportApplication, type ExpenseClaimDetail, type RentalSupport } from '@/api/user'
+import { downloadVacationDocument, getVacationHistory } from '@/api/vacation'
+import { downloadExpenseClaim, downloadRentalSupportApplication, getExpenseClaim, getRentalSupportApplication } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
