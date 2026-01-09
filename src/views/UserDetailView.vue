@@ -696,5 +696,47 @@ const goToList = () => {
     gap: 1rem;
   }
 }
+
+/* 모바일 화면 (600px 이하) */
+@media (max-width: 600px) {
+  .user-detail-view {
+    padding: 0.75rem;
+  }
+
+  .info-section {
+    padding: 1rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-section h1 {
+    font-size: 1.5rem;
+  }
+
+  /* 모바일에서도 버튼 색상 유지 */
+  .btn-back {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-edit {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-save {
+    background-color: #17ccff !important;
+    color: white !important;
+  }
+
+  .btn-cancel {
+    background-color: #95a5a6 !important;
+    color: white !important;
+  }
+}
 </style>
 

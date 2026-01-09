@@ -1210,5 +1210,55 @@ const calculatedRemainingDays = computed(() => {
     min-width: auto;
   }
 }
+
+/* 모바일 화면 (600px 이하) */
+@media (max-width: 600px) {
+  .my-info-view {
+    padding: 0.75rem;
+  }
+
+  .info-section {
+    padding: 1rem;
+  }
+
+  .header-section h1 {
+    font-size: 1.5rem;
+    padding-left: 0;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  /* 모바일에서도 버튼 색상 유지 */
+  .btn-save {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-add {
+    background-color: #17ccff !important;
+    color: white !important;
+  }
+
+  .btn-edit {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-delete {
+    background-color: #0d1f7a !important;
+    color: white !important;
+  }
+
+  .btn-cancel {
+    background-color: #999 !important;
+    color: white !important;
+  }
+}
 </style>
 
