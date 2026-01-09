@@ -293,8 +293,19 @@ const loadUserInfo = async () => {
       authVal: response.resultMsg.authVal || '',
       firstLogin: response.resultMsg.firstLogin || false
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('사용자 정보 조회 실패:', error)
+    
+    // 에러 코드 확인
+    const errorCode = error?.response?.data?.resultCode || error?.response?.data?.resultMsg?.errorCode
+    
+    // 권한 없음 (914)인 경우 대시보드로 리다이렉트
+    if (errorCode === '914') {
+      alert('권한이 없습니다.')
+      router.push('/dashboard')
+      return
+    }
+    
     alert('사용자 정보를 불러오는데 실패했습니다.')
     router.back()
   }
@@ -341,8 +352,19 @@ const saveUserInfo = async () => {
     userInfo.value = response.resultMsg
     isEditing.value = false
     alert('사용자 정보가 수정되었습니다.')
-  } catch (error) {
+  } catch (error: any) {
     console.error('사용자 정보 수정 실패:', error)
+    
+    // 에러 코드 확인
+    const errorCode = error?.response?.data?.resultCode || error?.response?.data?.resultMsg?.errorCode
+    
+    // 권한 없음 (914)인 경우 대시보드로 리다이렉트
+    if (errorCode === '914') {
+      alert('권한이 없습니다.')
+      router.push('/dashboard')
+      return
+    }
+    
     alert('사용자 정보 수정에 실패했습니다.')
   } finally {
     isSaving.value = false

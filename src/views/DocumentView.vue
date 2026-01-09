@@ -255,7 +255,6 @@ const loadVacationInfo = async () => {
 }
 
 const submitVacationForm = () => {
-  console.log('휴가 신청서 제출:', vacationForm.value)
   // 여기에 API 호출 로직 추가
 }
 </script>

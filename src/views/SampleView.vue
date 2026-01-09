@@ -1506,11 +1506,6 @@ const submitVacationFormDocx = async () => {
     const response = await apiClient.post('/sample/vacation_V2', requestData, {
       responseType: 'blob'
     })
-    
-    console.log('✅ DOCX 생성 성공:', {
-      size: response.data.size,
-      type: response.data.type
-    })
 
     // Content-Disposition 헤더에서 파일명 추출
     const today = new Date().toLocaleDateString('ko-KR').replace(/\D/g, '');
@@ -1562,11 +1557,6 @@ const submitRentalFormExcel = async () => {
 
     const response = await apiClient.post('/sample/rental_V2', requestData, {
       responseType: 'blob'
-    })
-    
-    console.log('✅ Excel 생성 성공:', {
-      size: response.data.size,
-      type: response.data.type
     })
 
     // Content-Disposition 헤더에서 파일명 추출
