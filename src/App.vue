@@ -324,6 +324,7 @@ const handleLogout = () => {
 
   .header-left {
     flex-shrink: 0;
+    padding-left: 0.5rem;
   }
 
   .header-logo {
@@ -385,12 +386,21 @@ const handleLogout = () => {
     padding: 0.5rem;
   }
 
+  .header-left {
+    padding-left: 0.75rem;
+  }
+
   .header-logo {
     height: 28px;
   }
 
+  .header-right {
+    flex-shrink: 0;
+  }
+
   .user-info {
     gap: 0.25rem;
+    flex-wrap: nowrap;
   }
 
   .btn {
@@ -403,6 +413,7 @@ const handleLogout = () => {
     justify-content: center;
     background-color: transparent !important;
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .btn-logout {
@@ -414,6 +425,7 @@ const handleLogout = () => {
     justify-content: center;
     background-color: transparent !important;
     gap: 2px;
+    flex-shrink: 0;
   }
 
   /* 작은 화면에서는 텍스트 숨기고 이미지와 라벨 표시 */
@@ -475,6 +487,143 @@ const handleLogout = () => {
     display: block !important;
     visibility: visible !important;
     font-size: 0.6rem;
+    color: #2c3e50;
+    font-weight: 700;
+  }
+}
+
+/* 매우 작은 모바일 화면 (576px 이하) */
+@media (max-width: 576px) {
+  .header-content {
+    padding: 0.5rem 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .header-left {
+    padding-left: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .header-logo {
+    height: 26px;
+  }
+
+  .header-right {
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .user-info {
+    gap: 0.2rem;
+    flex-wrap: nowrap;
+  }
+
+  .btn {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.7rem;
+    min-width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent !important;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .btn-logout {
+    padding: 0.35rem 0.4rem;
+    min-width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent !important;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .user-info .btn .btn-icon,
+  .user-info .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+  }
+
+  .user-info .btn-logout .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+  }
+
+  .user-info .btn .btn-icon-label,
+  .user-info .btn-icon-label {
+    font-size: 0.55rem;
+  }
+
+  .user-info .btn-logout .btn-icon-label {
+    font-size: 0.55rem;
+  }
+
+  /* 작은 화면에서는 텍스트 숨기고 이미지와 라벨 표시 */
+  .user-info .btn .btn-text,
+  .user-info .btn-text {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .user-info .btn .btn-icon-wrapper,
+  .user-info .btn-icon-wrapper {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .user-info .btn .btn-icon,
+  .user-info .btn-icon {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 3px;
+  }
+
+  .user-info .btn .btn-icon-label,
+  .user-info .btn-icon-label {
+    display: block !important;
+    visibility: visible !important;
+    font-size: 0.55rem;
+    color: #2c3e50;
+    font-weight: 700;
+  }
+
+  .user-info .btn-logout .btn-text {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .user-info .btn-logout .btn-icon-wrapper {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .user-info .btn-logout .btn-icon {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 3px;
+  }
+
+  .user-info .btn-logout .btn-icon-label {
+    display: block !important;
+    visibility: visible !important;
+    font-size: 0.55rem;
     color: #2c3e50;
     font-weight: 700;
   }

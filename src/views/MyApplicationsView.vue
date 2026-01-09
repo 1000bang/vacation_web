@@ -704,6 +704,7 @@ onMounted(async () => {
 
 .table-container {
   overflow-x: auto;
+  position: relative;
 }
 
 .data-table {
@@ -722,12 +723,14 @@ onMounted(async () => {
   text-align: center;
   font-weight: 600;
   border-bottom: 2px solid #0f1f88;
+  vertical-align: middle;
 }
 
 .data-table td {
   padding: 1rem;
   text-align: center;
   border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle;
 }
 
 .data-table td .action-buttons {
@@ -844,16 +847,109 @@ onMounted(async () => {
   }
 
   .table-container {
-    overflow-x: scroll;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem;
   }
 
   .data-table {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    min-width: 600px;
+    width: 100%;
   }
 
   .data-table th,
   .data-table td {
-    padding: 0.75rem 0.5rem;
+    padding: 0.6rem 0.4rem;
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  /* 각 컬럼별 너비 조정 */
+  .data-table th:nth-child(1),
+  .data-table td:nth-child(1) {
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .data-table th:nth-child(2),
+  .data-table td:nth-child(2) {
+    min-width: 180px;
+    text-align: center;
+  }
+
+  .data-table th:nth-child(3),
+  .data-table td:nth-child(3) {
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .data-table th:nth-child(4),
+  .data-table td:nth-child(4) {
+    min-width: 70px;
+    text-align: center;
+  }
+
+  .data-table th:nth-child(5),
+  .data-table td:nth-child(5) {
+    min-width: 100px;
+    text-align: left;
+  }
+
+  /* 작업 컬럼을 고정하여 항상 보이도록 */
+  .data-table th:last-child,
+  .data-table td:last-child {
+    position: sticky;
+    right: 0;
+    background-color: white;
+    z-index: 10;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    min-width: 90px;
+    text-align: center;
+  }
+
+  .data-table thead th:last-child {
+    background-color: #1226aa;
+    z-index: 11;
+    color: white;
+  }
+
+  .data-table tbody tr:hover td:last-child {
+    background-color: #f5f5f5;
+  }
+
+  .data-table tbody tr:last-child td:last-child {
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  /* 버튼 크기 조정 */
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 70px;
+    align-items: stretch;
+  }
+
+  .btn-small {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    width: 100%;
+    min-width: 60px;
+  }
+
+  /* 모바일에서도 버튼 색상 유지 */
+  .btn-download {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-delete {
+    background-color: #dc3545 !important;
+    color: white !important;
   }
 }
 </style>
