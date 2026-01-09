@@ -3,6 +3,14 @@ import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to, from, savedPosition) {
+    // 저장된 위치가 있으면 (뒤로가기 등) 그 위치로 이동
+    if (savedPosition) {
+      return savedPosition
+    }
+    // 페이지 이동 시 항상 맨 위로 스크롤
+    return { top: 0, behavior: 'smooth' }
+  },
   routes: [
     {
       path: '/',

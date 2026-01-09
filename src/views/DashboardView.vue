@@ -274,8 +274,15 @@ const goToUserManagement = () => {
   }
 
   .dashboard-container h1 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container h1 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
   }
 
   .button-grid {

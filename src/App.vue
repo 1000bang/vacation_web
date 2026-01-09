@@ -14,8 +14,14 @@
         <div class="header-right">
           <div v-if="user" class="user-info">
             <span class="user-name">{{ user.division }}/{{ user.team }} {{ user.name }} {{ user.position }}</span>
-            <button @click="handleMyInfo" class="btn btn-my-info">내 정보</button>
-            <button @click="handleLogout" class="btn-logout">로그아웃</button>
+            <button @click="handleMyInfo" class="btn btn-my-info">
+              <span class="btn-text">내 정보</span>
+              <span class="btn-emoji">👤</span>
+            </button>
+            <button @click="handleLogout" class="btn-logout">
+              <span class="btn-text">로그아웃</span>
+              <span class="btn-emoji">🚪</span>
+            </button>
           </div>
           <div v-else class="auth-buttons">
             <RouterLink v-if="!isLoginPage" to="/login" class="btn btn-secondary">로그인</RouterLink>
@@ -236,22 +242,96 @@ const handleLogout = () => {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
+/* 모바일 반응형 스타일 */
 @media (max-width: 768px) {
   .header-content {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .header-left {
+    flex-shrink: 0;
   }
 
   .header-logo {
     height: 32px;
   }
 
+  .header-right {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  .user-info {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  /* 모바일에서 사용자 정보 텍스트 숨김 또는 줄바꿈 */
   .user-name {
-    font-size: 0.85rem;
+    display: none; /* 작은 화면에서는 숨김 */
   }
 
   .btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem;
     font-size: 0.85rem;
+    min-width: 40px;
+    position: relative;
+  }
+
+  .btn-text {
+    display: inline;
+  }
+
+  .btn-emoji {
+    display: none;
+  }
+
+  .btn-logout {
+    padding: 0.5rem;
+    min-width: 40px;
+  }
+}
+
+/* 작은 모바일 화면 (480px 이하) */
+@media (max-width: 480px) {
+  .header-content {
+    padding: 0.5rem;
+  }
+
+  .header-logo {
+    height: 28px;
+  }
+
+  .user-info {
+    gap: 0.25rem;
+  }
+
+  .btn {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* 작은 화면에서는 텍스트 숨기고 이모지만 표시 */
+  .btn-text {
+    display: none;
+  }
+
+  .btn-emoji {
+    display: inline;
+    font-size: 1.2rem;
+  }
+
+  .btn-logout .btn-text {
+    display: none;
+  }
+
+  .btn-logout .btn-emoji {
+    display: inline;
+    font-size: 1.2rem;
   }
 }
 </style>
