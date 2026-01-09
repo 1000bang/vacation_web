@@ -3,7 +3,7 @@ import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     // 저장된 위치가 있으면 (뒤로가기 등) 그 위치로 이동
     if (savedPosition) {
       return savedPosition
