@@ -26,7 +26,17 @@
 
           <!-- 비용 항목 목록 -->
           <div class="expense-items-section">
-            <h3>비용 항목 목록 <span class="required">*</span></h3>
+            <h3 class="label-with-help">
+              비용 항목 목록 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('expense')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
+            </h3>
             <div
               v-for="(item, index) in expenseForm.expenseItems"
               :key="index"
@@ -73,18 +83,22 @@
                   <input type="text" v-model="item.note" />
                 </div>
               </div>
-              <button type="button" @click="removeExpenseItem(index)" class="btn btn-danger btn-sm">
-                삭제
+              <div class="expense-item-actions">
+                <button type="button" @click="removeExpenseItem(index)" class="btn btn-danger btn-sm">
+                  삭제
+                </button>
+              </div>
+            </div>
+            <div class="expense-items-actions">
+              <button
+                type="button"
+                @click="addExpenseItem"
+                class="btn btn-secondary"
+                :disabled="expenseForm.expenseItems.length >= 20"
+              >
+                항목 추가
               </button>
             </div>
-            <button
-              type="button"
-              @click="addExpenseItem"
-              class="btn btn-secondary"
-              :disabled="expenseForm.expenseItems.length >= 20"
-            >
-              항목 추가
-            </button>
           </div>
 
           <div class="form-actions">
@@ -95,6 +109,14 @@
         </form>
       </div>
     </div>
+
+    <!-- 도움말 모달 -->
+    <HelpModal
+      :is-open="helpModal.isOpen"
+      :image-src="helpModal.imageSrc"
+      alt-text="비용 항목 도움말"
+      @close="closeHelpModal"
+    />
   </div>
 </template>
 
@@ -102,9 +124,32 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
+import HelpModal from '@/components/HelpModal.vue'
+import expenseImage from '@/assets/image/help/expense.png'
 
 const router = useRouter()
 
+// 도움말 모달 상태
+const helpModal = reactive<{
+  isOpen: boolean
+  imageSrc: string
+}>({
+  isOpen: false,
+  imageSrc: ''
+})
+
+// 도움말 모달 열기
+const showHelpModal = (imageKey: string) => {
+  if (imageKey === 'expense') {
+    helpModal.imageSrc = expenseImage
+  }
+  helpModal.isOpen = true
+}
+
+// 도움말 모달 닫기
+const closeHelpModal = () => {
+  helpModal.isOpen = false
+}
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
 const getTodayDate = () => {
@@ -430,6 +475,36 @@ const submitExpenseApplication = async () => {
   color: #666;
 }
 
+.label-with-help {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.help-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #1226aa;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.help-button:hover {
+  background-color: #0f1f88;
+}
+
+.help-button:active {
+  transform: scale(0.95);
+}
+
 .expense-item {
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -445,13 +520,25 @@ const submitExpenseApplication = async () => {
 
 .expense-item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
 .expense-item-grid .form-group.full-width {
   grid-column: 1 / -1;
+}
+
+.expense-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.expense-items-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .btn {

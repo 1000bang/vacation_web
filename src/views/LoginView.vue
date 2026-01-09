@@ -10,7 +10,7 @@
             v-model="form.email"
             type="email"
             required
-            placeholder="example@company.com"
+            placeholder="username@knowledgepoint.co.kr"
             class="form-input"
           />
         </div>

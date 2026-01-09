@@ -54,7 +54,7 @@
           @click="goToUserManagement" 
           class="dashboard-btn admin-btn"
         >
-          <span class="btn-icon">👥</span>
+          <span class="btn-icon">🧑🏻‍💻</span>
           <span class="btn-text">사용자 관리</span>
         </button>
       </div>

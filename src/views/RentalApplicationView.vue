@@ -26,6 +26,14 @@
           <div class="form-group">
             <label class="label-with-help">
               월세 총 계약 시작일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_cont_period')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input type="date" v-model="rentalForm.contractStartDate" required />
           </div>
@@ -33,6 +41,14 @@
           <div class="form-group">
             <label class="label-with-help">
               월세 총 계약 종료일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_cont_period')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input
               type="date"
@@ -44,6 +60,14 @@
           <div class="form-group">
             <label class="label-with-help">
               계약 월세 금액(원) <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_contract_price')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <div class="input-with-unit">
               <input
@@ -71,6 +95,14 @@
           <div class="form-group">
             <label class="label-with-help">
               월세 청구 개시일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_billing_startdate')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input type="date" v-model="rentalForm.billingStartDate" required />
           </div>
@@ -78,6 +110,14 @@
           <div class="form-group">
             <label class="label-with-help">
               청구 월세 시작일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_billing_period')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input type="date" v-model="rentalForm.billingPeriodStartDate" required />
           </div>
@@ -85,6 +125,14 @@
           <div class="form-group">
             <label class="label-with-help">
               청구 월세 종료일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_billing_period')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input type="date" v-model="rentalForm.billingPeriodEndDate" required />
           </div>
@@ -92,6 +140,14 @@
           <div class="form-group">
             <label class="label-with-help">
               월세 납입일 <span class="required">*</span>
+              <button
+                type="button"
+                class="help-button"
+                @click="showHelpModal('rental_payment_date')"
+                aria-label="도움말"
+              >
+                ?
+              </button>
             </label>
             <input type="date" v-model="rentalForm.paymentDate" required />
           </div>
@@ -136,6 +192,14 @@
         </form>
       </div>
     </div>
+
+    <!-- 도움말 모달 -->
+    <HelpModal
+      :is-open="helpModal.isOpen"
+      :image-src="helpModal.imageSrc"
+      alt-text="월세 지원 신청 도움말"
+      @close="closeHelpModal"
+    />
   </div>
 </template>
 
@@ -143,8 +207,43 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
+import HelpModal from '@/components/HelpModal.vue'
+import rentalContPeriodImage from '@/assets/image/help/rental_cont_period.png'
+import rentalContractPriceImage from '@/assets/image/help/rental_contract_price.png'
+import rentalBillingStartDateImage from '@/assets/image/help/rental_billing_startdate.png'
+import rentalBillingPeriodImage from '@/assets/image/help/rental_billing_period.png'
+import rentalPaymentDateImage from '@/assets/image/help/rental_paymentDate.png'
 
 const router = useRouter()
+
+// 도움말 모달 상태
+const helpModal = reactive<{
+  isOpen: boolean
+  imageSrc: string
+}>({
+  isOpen: false,
+  imageSrc: ''
+})
+
+// 도움말 이미지 맵
+const helpImageMap: Record<string, string> = {
+  rental_cont_period: rentalContPeriodImage,
+  rental_contract_price: rentalContractPriceImage,
+  rental_billing_startdate: rentalBillingStartDateImage,
+  rental_billing_period: rentalBillingPeriodImage,
+  rental_payment_date: rentalPaymentDateImage
+}
+
+// 도움말 모달 열기
+const showHelpModal = (imageKey: string) => {
+  helpModal.imageSrc = helpImageMap[imageKey] || ''
+  helpModal.isOpen = true
+}
+
+// 도움말 모달 닫기
+const closeHelpModal = () => {
+  helpModal.isOpen = false
+}
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
 const getTodayDate = () => {
@@ -628,6 +727,30 @@ const submitRentalApplication = async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.help-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #1226aa;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.help-button:hover {
+  background-color: #0f1f88;
+}
+
+.help-button:active {
+  transform: scale(0.95);
 }
 
 .required {

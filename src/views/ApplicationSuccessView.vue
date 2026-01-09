@@ -180,31 +180,34 @@ const downloadDocument = async () => {
   isDownloading.value = true
   try {
     if (applicationType.value === 'vacation') {
-      const blob = await downloadVacationDocument(applicationSeq.value)
+      const applicant = summary.value?.applicant as string | undefined
+      const { blob, filename } = await downloadVacationDocument(applicationSeq.value, applicant)
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `휴가신청서_${applicationSeq.value}.docx`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } else if (applicationType.value === 'expense') {
-      const blob = await downloadExpenseClaim(applicationSeq.value)
+      const applicant = summary.value?.applicant as string | undefined
+      const { blob, filename } = await downloadExpenseClaim(applicationSeq.value, applicant)
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `개인비용신청서_${applicationSeq.value}.xlsx`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } else if (applicationType.value === 'rental') {
-      const blob = await downloadRentalSupportApplication(applicationSeq.value)
+      const applicant = summary.value?.applicant as string | undefined
+      const { blob, filename } = await downloadRentalSupportApplication(applicationSeq.value, applicant)
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `월세지원신청서_${applicationSeq.value}.xlsx`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

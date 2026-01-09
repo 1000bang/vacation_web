@@ -212,6 +212,14 @@
             <div class="form-group">
               <label class="label-with-help">
                 월세 계약 시작일 <span class="required">*</span>
+                <button
+                  type="button"
+                  class="help-button"
+                  @click="showHelpModal('prop_period')"
+                  aria-label="도움말"
+                >
+                  ?
+                </button>
               </label>
               <input type="date" v-model="rentalForm.contractStartDate" required />
             </div>
@@ -229,6 +237,14 @@
             <div class="form-group">
               <label class="label-with-help">
                 월세 계약 종료일 <span class="required">*</span>
+                <button
+                  type="button"
+                  class="help-button"
+                  @click="showHelpModal('prop_period')"
+                  aria-label="도움말"
+                >
+                  ?
+                </button>
               </label>
               <input
                 type="date"
@@ -241,6 +257,14 @@
             <div class="form-group">
               <label class="label-with-help">
                 계약 월세 금액(원) <span class="required">*</span>
+                <button
+                  type="button"
+                  class="help-button"
+                  @click="showHelpModal('prop_amount')"
+                  aria-label="도움말"
+                >
+                  ?
+                </button>
               </label>
               <div class="input-with-unit">
                 <input
@@ -275,6 +299,14 @@
             <div class="form-group">
               <label class="label-with-help">
                 월세 청구 개시일 <span class="required">*</span>
+                <button
+                  type="button"
+                  class="help-button"
+                  @click="showHelpModal('prop_billingstart')"
+                  aria-label="도움말"
+                >
+                  ?
+                </button>
               </label>
               <input type="date" v-model="rentalForm.billingStartDate" required />
             </div>
@@ -294,11 +326,19 @@
         </div>
       </div>
     </div>
+
+    <!-- 도움말 모달 -->
+    <HelpModal
+      :is-open="helpModal.isOpen"
+      :image-src="helpModal.imageSrc"
+      alt-text="월세 품의 정보 도움말"
+      @close="closeHelpModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, reactive } from 'vue'
 import {
   getUserInfo,
   getRentalSupportList,
@@ -312,6 +352,10 @@ import {
   type UserVacationInfoResponse,
   type UpdateVacationInfoRequest
 } from '@/api/user'
+import HelpModal from '@/components/HelpModal.vue'
+import propPeriodImage from '@/assets/image/help/prop_period.png'
+import propAmountImage from '@/assets/image/help/prop_amount.png'
+import propBillingStartImage from '@/assets/image/help/prop_billingStart.png'
 
 const userInfo = ref<UserInfoResponse | null>(null)
 
@@ -328,6 +372,33 @@ const editableVacationInfo = ref({
   usedVacationDays: 0,
   reservedVacationDays: 0
 })
+
+// 도움말 모달 상태
+const helpModal = reactive<{
+  isOpen: boolean
+  imageSrc: string
+}>({
+  isOpen: false,
+  imageSrc: ''
+})
+
+// 도움말 이미지 맵
+const helpImageMap: Record<string, string> = {
+  prop_period: propPeriodImage,
+  prop_amount: propAmountImage,
+  prop_billingstart: propBillingStartImage
+}
+
+// 도움말 모달 열기
+const showHelpModal = (imageKey: string) => {
+  helpModal.imageSrc = helpImageMap[imageKey] || ''
+  helpModal.isOpen = true
+}
+
+// 도움말 모달 닫기
+const closeHelpModal = () => {
+  helpModal.isOpen = false
+}
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
 const getTodayDate = () => {
@@ -811,6 +882,30 @@ const calculatedRemainingDays = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.help-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #1226aa;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+}
+
+.help-button:hover {
+  background-color: #0f1f88;
+}
+
+.help-button:active {
+  transform: scale(0.95);
 }
 
 .input-with-unit {

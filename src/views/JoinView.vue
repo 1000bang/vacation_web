@@ -10,7 +10,7 @@
             v-model="form.email"
             type="email"
             required
-            placeholder="example@company.com"
+            placeholder="username@knowledgepoint.co.kr"
             class="form-input"
           />
         </div>
@@ -38,6 +38,23 @@
             class="form-input"
             minlength="8"
           />
+        </div>
+
+        <div class="form-group">
+          <label for="passwordConfirm">비밀번호 확인 *</label>
+          <input
+            id="passwordConfirm"
+            v-model="passwordConfirm"
+            type="password"
+            required
+            placeholder="비밀번호를 다시 입력하세요"
+            class="form-input"
+            :class="{ 'error': passwordConfirm && !isPasswordMatch }"
+            @input="validatePasswordMatch"
+          />
+          <div v-if="passwordConfirm && !isPasswordMatch" class="password-error">
+            비밀번호가 일치하지 않습니다.
+          </div>
         </div>
 
         <div class="form-group">
@@ -125,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { join, type JoinRequest } from '@/api/user'
 
@@ -156,13 +173,38 @@ const form = ref<JoinRequest>({
   joinDate: ''
 })
 
+const passwordConfirm = ref('')
+const isPasswordMatch = ref(true)
 const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+// 비밀번호 일치 여부 확인
+const validatePasswordMatch = () => {
+  if (passwordConfirm.value) {
+    isPasswordMatch.value = form.value.password === passwordConfirm.value
+  } else {
+    isPasswordMatch.value = true
+  }
+}
+
+// 비밀번호가 변경될 때도 확인
+watch(() => form.value.password, () => {
+  if (passwordConfirm.value) {
+    validatePasswordMatch()
+  }
+})
+
 const handleSubmit = async () => {
   errorMessage.value = ''
   successMessage.value = ''
+  
+  // 비밀번호 확인 검증
+  if (form.value.password !== passwordConfirm.value) {
+    errorMessage.value = '비밀번호가 일치하지 않습니다.'
+    return
+  }
+  
   isLoading.value = true
 
   try {
@@ -250,6 +292,16 @@ const handleSubmit = async () => {
 .form-input:disabled {
   background-color: #f5f5f5;
   cursor: not-allowed;
+}
+
+.form-input.error {
+  border-color: #c33;
+}
+
+.password-error {
+  color: #c33;
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 .error-message {
