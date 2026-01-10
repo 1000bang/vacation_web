@@ -1,6 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 
+// 동적 import 실패 시 에러 핸들링을 위한 헬퍼 함수
+const loadView = (view: string) => {
+  return () => import(`../views/${view}.vue`).catch((error) => {
+    console.error(`Failed to load ${view}:`, error)
+    // 동적 import 실패 시 403 에러 페이지로 이동
+    window.location.href = '/403'
+    throw error
+  })
+}
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(_to, _from, savedPosition) {
@@ -36,72 +46,72 @@ const router = createRouter({
     {
       path: '/sample',
       name: 'sample',
-      component: () => import('../views/SampleView.vue')
+      component: loadView('SampleView')
     },
     {
       path: '/join',
       name: 'join',
-      component: () => import('../views/JoinView.vue')
+      component: loadView('JoinView')
     },
     {
       path: '/login',
       name: 'login',
-      component: () => import('../views/LoginView.vue')
+      component: loadView('LoginView')
     },
     {
       path: '/document',
       name: 'document',
-      component: () => import('../views/DocumentView.vue')
+      component: loadView('DocumentView')
     },
     {
       path: '/my-info',
       name: 'my-info',
-      component: () => import('../views/MyInfoView.vue')
+      component: loadView('MyInfoView')
     },
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('../views/DashboardView.vue')
+      component: loadView('DashboardView')
     },
     {
       path: '/vacation-application',
       name: 'vacation-application',
-      component: () => import('../views/VacationApplicationView.vue')
+      component: loadView('VacationApplicationView')
     },
     {
       path: '/expense-application',
       name: 'expense-application',
-      component: () => import('../views/ExpenseApplicationView.vue')
+      component: loadView('ExpenseApplicationView')
     },
     {
       path: '/rental-application',
       name: 'rental-application',
-      component: () => import('../views/RentalApplicationView.vue')
+      component: loadView('RentalApplicationView')
     },
     {
       path: '/my-applications',
       name: 'my-applications',
-      component: () => import('../views/MyApplicationsView.vue')
+      component: loadView('MyApplicationsView')
     },
     {
       path: '/user-management',
       name: 'user-management',
-      component: () => import('../views/UserManagementView.vue')
+      component: loadView('UserManagementView')
     },
     {
       path: '/user-management/:userId',
       name: 'user-detail',
-      component: () => import('../views/UserDetailView.vue')
+      component: loadView('UserDetailView')
     },
     {
       path: '/application-success',
       name: 'application-success',
-      component: () => import('../views/ApplicationSuccessView.vue')
+      component: loadView('ApplicationSuccessView')
     },
     {
       path: '/403',
       name: 'error-403',
-      component: () => import('../views/Error403View.vue')
+      component: loadView('Error403View')
     },
     {
       path: '/:pathMatch(.*)*',
