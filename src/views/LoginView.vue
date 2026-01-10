@@ -45,11 +45,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { login, type LoginRequest } from '@/api/user'
 
 const router = useRouter()
+const route = useRoute()
 
 const form = ref<LoginRequest>({
   email: '',
@@ -58,6 +59,16 @@ const form = ref<LoginRequest>({
 
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// 쿼리 파라미터에서 메시지 확인
+onMounted(() => {
+  const message = route.query.message as string
+  if (message) {
+    errorMessage.value = message
+    // URL에서 쿼리 파라미터 제거 (깔끔한 URL 유지)
+    router.replace({ path: '/login', query: {} })
+  }
+})
 
 const handleSubmit = async () => {
   errorMessage.value = ''

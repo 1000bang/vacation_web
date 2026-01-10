@@ -100,7 +100,8 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        window.location.href = '/login'
+        // 세션 만료 메시지와 함께 로그인 페이지로 이동
+        window.location.href = '/login?message=세션이 만료되었습니다'
         return Promise.reject(error)
       }
 
@@ -135,9 +136,18 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        window.location.href = '/login'
+        // 세션 만료 메시지와 함께 로그인 페이지로 이동
+        window.location.href = '/login?message=세션이 만료되었습니다'
         return Promise.reject(refreshError)
       }
+    }
+
+    // 403 에러 처리 (권한 없음)
+    if (error.response?.status === 403) {
+      console.error('403 Forbidden:', error)
+      // 403 에러 페이지로 이동
+      window.location.href = '/403'
+      return Promise.reject(error)
     }
 
     // 401이 아니거나 다른 에러인 경우

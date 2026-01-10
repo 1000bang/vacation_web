@@ -97,6 +97,15 @@ const router = createRouter({
       path: '/application-success',
       name: 'application-success',
       component: () => import('../views/ApplicationSuccessView.vue')
+    },
+    {
+      path: '/403',
+      name: 'error-403',
+      component: () => import('../views/Error403View.vue')
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/403'
     }
   ]
 })

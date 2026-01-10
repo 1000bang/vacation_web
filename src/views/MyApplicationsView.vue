@@ -899,30 +899,11 @@ onMounted(async () => {
     text-align: left;
   }
 
-  /* 작업 컬럼을 고정하여 항상 보이도록 */
+  /* 작업 컬럼 스타일 */
   .data-table th:last-child,
   .data-table td:last-child {
-    position: sticky;
-    right: 0;
-    background-color: white;
-    z-index: 10;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
     min-width: 90px;
     text-align: center;
-  }
-
-  .data-table thead th:last-child {
-    background-color: #1226aa;
-    z-index: 11;
-    color: white;
-  }
-
-  .data-table tbody tr:hover td:last-child {
-    background-color: #f5f5f5;
-  }
-
-  .data-table tbody tr:last-child td:last-child {
-    border-bottom: 1px solid #e0e0e0;
   }
 
   /* 버튼 크기 조정 */
