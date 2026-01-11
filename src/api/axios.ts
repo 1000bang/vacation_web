@@ -80,10 +80,27 @@ apiClient.interceptors.response.use(
           failedQueue.push({ resolve, reject })
         })
           .then(token => {
-            originalRequest.headers.Authorization = `Bearer ${token}`
-            return apiClient(originalRequest)
+            if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              return apiClient(originalRequest)
+            } else {
+              // 토큰이 null이면 세션 만료로 처리
+              localStorage.removeItem('accessToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('user')
+              window.location.href = '/login?message=세션이 만료되었습니다'
+              return Promise.reject(new Error('Session expired'))
+            }
           })
           .catch(err => {
+            // 큐에서 실패한 경우도 세션 만료로 처리 (401 에러인 경우만)
+            const axiosError = err as AxiosError
+            if (axiosError?.response?.status === 401 || err?.message?.includes('Session expired')) {
+              localStorage.removeItem('accessToken')
+              localStorage.removeItem('refreshToken')
+              localStorage.removeItem('user')
+              window.location.href = '/login?message=세션이 만료되었습니다'
+            }
             return Promise.reject(err)
           })
       }

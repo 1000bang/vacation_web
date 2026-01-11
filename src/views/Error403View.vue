@@ -26,6 +26,13 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const goHome = () => {
+  // 로그아웃 처리
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
+  localStorage.removeItem('user')
+  // 사용자 정보 업데이트 이벤트 발생
+  window.dispatchEvent(new Event('user-updated'))
+  // 홈으로 이동
   router.push('/')
 }
 
@@ -141,6 +148,17 @@ const goBack = () => {
 
   .btn {
     width: 100%;
+  }
+
+  /* 모바일에서도 버튼 색상 유지 */
+  .btn-primary {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-secondary {
+    background-color: #e0e0e0 !important;
+    color: #333 !important;
   }
 }
 </style>
