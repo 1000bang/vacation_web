@@ -79,13 +79,28 @@ const router = createRouter({
       component: loadView('VacationApplicationView')
     },
     {
+      path: '/vacation-application/:seq',
+      name: 'vacation-application-edit',
+      component: loadView('VacationApplicationView')
+    },
+    {
       path: '/expense-application',
       name: 'expense-application',
       component: loadView('ExpenseApplicationView')
     },
     {
+      path: '/expense-application/:seq',
+      name: 'expense-application-edit',
+      component: loadView('ExpenseApplicationView')
+    },
+    {
       path: '/rental-application',
       name: 'rental-application',
+      component: loadView('RentalApplicationView')
+    },
+    {
+      path: '/rental-application/:seq',
+      name: 'rental-application-edit',
       component: loadView('RentalApplicationView')
     },
     {

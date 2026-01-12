@@ -107,10 +107,38 @@ const handleSubmit = async () => {
     }
   } catch (error: any) {
     console.error('로그인 오류:', error)
-    if (error.response?.data?.resultMsg?.errorMessage) {
-      errorMessage.value = error.response.data.resultMsg.errorMessage
+    console.error('에러 응답 데이터:', error.response?.data)
+    
+    // 에러 응답 구조 확인 및 처리
+    // 백엔드 응답: { resultCode: "904", resultMsg: { errorCode: "904", errorMessage: "..." } }
+    if (error.response?.data) {
+      const responseData = error.response.data
+      console.log('응답 데이터 구조:', JSON.stringify(responseData, null, 2))
+      
+      // resultMsg가 객체이고 errorMessage 속성이 있는 경우
+      if (responseData.resultMsg && typeof responseData.resultMsg === 'object' && 'errorMessage' in responseData.resultMsg) {
+        errorMessage.value = responseData.resultMsg.errorMessage
+        console.log('에러 메시지 설정:', responseData.resultMsg.errorMessage)
+      } 
+      // resultMsg가 문자열인 경우 (다른 형태의 에러 응답)
+      else if (typeof responseData.resultMsg === 'string') {
+        errorMessage.value = responseData.resultMsg
+        console.log('에러 메시지 설정 (문자열):', responseData.resultMsg)
+      }
+      // resultCode가 있고 0이 아닌 경우
+      else if (responseData.resultCode && responseData.resultCode !== '0') {
+        errorMessage.value = '로그인에 실패했습니다.'
+        console.log('기본 에러 메시지 설정')
+      } else {
+        errorMessage.value = '로그인 중 오류가 발생했습니다.'
+        console.log('알 수 없는 에러')
+      }
+    } else if (error.message) {
+      errorMessage.value = error.message
+      console.log('에러 메시지 (error.message):', error.message)
     } else {
       errorMessage.value = '로그인 중 오류가 발생했습니다.'
+      console.log('에러 정보 없음')
     }
   } finally {
     isLoading.value = false

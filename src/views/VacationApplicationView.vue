@@ -1,14 +1,18 @@
 <template>
   <div class="vacation-application-view">
     <div class="header-section">
-      <h1>휴가(결무) 신청</h1>
+      <div class="header-title-wrapper">
+        <h1>{{ isEditMode ? '휴가(결무) 수정' : '휴가(결무) 신청' }}</h1>
+        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+      </div>
     </div>
 
     <div class="vacation-form-wrapper">
       <div class="form-container">
         <div class="form-header">
           <h2>휴가 결무 신청서</h2>
-          <div v-if="vacationInfo" class="vacation-info-header">
+          <!-- 신청 모드일 때만 현재 연차 정보 표시 -->
+          <div v-if="!isEditMode && vacationInfo" class="vacation-info-header">
             <span class="info-text">금년 연차: {{ vacationInfo.annualVacationDays }}일</span>
             <span class="info-text">직전 잔여 연차: {{ vacationInfo.remainingVacationDays }}일</span>
           </div>
@@ -74,6 +78,57 @@
             <small v-if="calculatedVacationDays > 0" class="form-hint">
               시작일과 종료일 기준 자동 계산값: {{ calculatedVacationDays }}일
             </small>
+            <!-- 수정 모드: 신청 당시 연차 정보 표시 (읽기 전용) -->
+            <div v-if="isEditMode && currentVacation" class="vacation-edit-info">
+              <div class="edit-info-row">
+                <label class="edit-info-label">총 연차:</label>
+                <input
+                  type="number"
+                  v-model.number="vacationForm.annualVacationDays"
+                  step="0.5"
+                  min="0"
+                  class="edit-info-input"
+                  disabled
+                />
+                <span class="edit-info-unit">일</span>
+              </div>
+              <div class="edit-info-row">
+                <label class="edit-info-label">직전 잔여 연차:</label>
+                <input
+                  type="number"
+                  v-model.number="vacationForm.previousRemainingDays"
+                  step="0.5"
+                  min="0"
+                  class="edit-info-input"
+                  disabled
+                />
+                <span class="edit-info-unit">일</span>
+              </div>
+              <div class="edit-info-row">
+                <label class="edit-info-label">신청 연차 일수:</label>
+                <input
+                  type="number"
+                  v-model.number="vacationForm.requestedVacationDays"
+                  step="0.5"
+                  min="0"
+                  class="edit-info-input"
+                  disabled
+                />
+                <span class="edit-info-unit">일</span>
+              </div>
+              <div class="edit-info-row">
+                <label class="edit-info-label">잔여 연차:</label>
+                <input
+                  type="number"
+                  v-model.number="vacationForm.remainingVacationDays"
+                  step="0.5"
+                  min="0"
+                  class="edit-info-input"
+                  disabled
+                />
+                <span class="edit-info-unit">일</span>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -82,7 +137,7 @@
           </div>
 
           <button type="submit" class="submit-button" :disabled="isSubmitting">
-            {{ isSubmitting ? '신청 중...' : '신청하기' }}
+            {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
           </button>
         </form>
       </div>
@@ -92,11 +147,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getUserVacationInfo, type UserVacationInfoResponse } from '@/api/user'
-import { createVacation, type VacationRequest } from '@/api/vacation'
+import { createVacation, updateVacation, getVacationHistory, type VacationRequest, type VacationHistory } from '@/api/vacation'
 
 const router = useRouter()
+const route = useRoute()
+
+const isEditMode = computed(() => !!route.params.seq)
+const vacationSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
+
+// 뒤로가기 함수
+const goBack = () => {
+  router.push('/my-applications')
+}
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
 const getTodayDate = () => {
@@ -113,10 +177,15 @@ const vacationForm = ref({
   endDate: '',
   vacationType: '',
   requestedVacationDays: 0,
-  reason: ''
+  reason: '',
+  // 수정 모드용 연차 정보
+  annualVacationDays: 0,
+  previousRemainingDays: 0,
+  remainingVacationDays: 0
 })
 
 const vacationInfo = ref<UserVacationInfoResponse | null>(null)
+const currentVacation = ref<VacationHistory | null>(null)
 const isSubmitting = ref(false)
 
 // 신청일자보다 이전 날짜를 비활성화하기 위한 최소 날짜 계산
@@ -215,11 +284,45 @@ watch(() => vacationForm.value.vacationType, (newType) => {
 })
 
 onMounted(async () => {
-  // 컴포넌트 마운트 시 신청일자를 오늘로 설정
-  vacationForm.value.requestDate = getTodayDate()
   // 연차 정보 로드
   await loadVacationInfo()
+  
+  // 수정 모드인 경우 기존 데이터 로드
+  if (isEditMode.value && vacationSeq.value) {
+    await loadVacationData(vacationSeq.value)
+  } else {
+    // 신청 모드인 경우 신청일자를 오늘로 설정
+    vacationForm.value.requestDate = getTodayDate()
+  }
 })
+
+// 기존 휴가 데이터 로드
+const loadVacationData = async (seq: number) => {
+  try {
+    const response = await getVacationHistory(seq)
+    const vacation = response.resultMsg
+    
+    if (vacation) {
+      // 수정 모드에서 표시할 연차 정보 저장
+      currentVacation.value = vacation
+      
+      vacationForm.value.requestDate = vacation.requestDate || getTodayDate()
+      vacationForm.value.startDate = vacation.startDate
+      vacationForm.value.endDate = vacation.endDate
+      vacationForm.value.vacationType = vacation.type
+      vacationForm.value.requestedVacationDays = vacation.period
+      vacationForm.value.reason = vacation.reason || ''
+      // 연차 정보도 폼에 로드
+      vacationForm.value.annualVacationDays = vacation.annualVacationDays || 0
+      vacationForm.value.previousRemainingDays = vacation.previousRemainingDays || 0
+      vacationForm.value.remainingVacationDays = vacation.remainingVacationDays || 0
+    }
+  } catch (error) {
+    console.error('휴가 데이터 조회 실패:', error)
+    alert('휴가 데이터를 불러오는데 실패했습니다.')
+    router.push('/my-applications')
+  }
+}
 
 const loadVacationInfo = async () => {
   try {
@@ -245,24 +348,33 @@ const submitVacationApplication = async () => {
       vacationType: vacationForm.value.vacationType,
       requestedVacationDays: vacationForm.value.requestedVacationDays,
       reason: vacationForm.value.reason || ''
+      // 연차 정보는 disabled 처리되어 수정 불가하므로 백엔드에서 자동 계산하도록 함
     }
     
-    const response = await createVacation(request)
-    // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
-    if (response.resultMsg && response.resultMsg.seq) {
-      router.push({
-        path: '/application-success',
-        query: {
-          type: 'vacation',
-          seq: response.resultMsg.seq
-        }
-      })
-    } else {
+    if (isEditMode.value && vacationSeq.value) {
+      // 수정 모드
+      await updateVacation(vacationSeq.value, request)
+      alert('수정되었습니다.')
       router.push('/my-applications')
+    } else {
+      // 신청 모드
+      const response = await createVacation(request)
+      // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
+      if (response.resultMsg && response.resultMsg.seq) {
+        router.push({
+          path: '/application-success',
+          query: {
+            type: 'vacation',
+            seq: response.resultMsg.seq
+          }
+        })
+      } else {
+        router.push('/my-applications')
+      }
     }
   } catch (error: any) {
-    console.error('휴가 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '휴가 신청에 실패했습니다.'
+    console.error(isEditMode.value ? '휴가 수정 실패:' : '휴가 신청 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '휴가 수정에 실패했습니다.' : '휴가 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false
@@ -283,11 +395,33 @@ const submitVacationApplication = async () => {
   text-align: left;
 }
 
+.header-title-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .header-section h1 {
   color: #2c3e50;
   font-size: 2rem;
   margin: 0;
   padding-left: 30px;
+}
+
+.btn-back {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.btn-back:hover {
+  background-color: #5a6268;
 }
 
 .vacation-form-wrapper {
@@ -372,6 +506,106 @@ const submitVacationApplication = async () => {
   color: #666;
 }
 
+.vacation-edit-info {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #1226aa;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(18, 38, 170, 0.1);
+  position: relative;
+}
+
+.vacation-edit-info::before {
+  content: '연차 정보';
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1226aa;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #1226aa;
+}
+
+.edit-info-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid rgba(18, 38, 170, 0.1);
+  transition: background-color 0.2s;
+}
+
+.edit-info-row:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.edit-info-row:last-child {
+  border-bottom: none;
+}
+
+.edit-info-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  min-width: 130px;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+.edit-info-input {
+  padding: 0.625rem 0.875rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  text-align: right;
+  width: 140px;
+  background-color: white;
+  transition: all 0.3s;
+  font-weight: 600;
+  color: #1226aa;
+  margin-left: auto;
+}
+
+.edit-info-input:disabled {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.8;
+  border-color: #ccc;
+}
+
+.edit-info-input:focus {
+  outline: none;
+  border-color: #17ccff;
+  box-shadow: 0 0 0 4px rgba(23, 204, 255, 0.15);
+  background-color: #f0f9ff;
+  transform: scale(1.02);
+}
+
+.edit-info-input:focus:disabled {
+  border-color: #ccc;
+  box-shadow: none;
+  background-color: #f5f5f5;
+  transform: none;
+}
+
+.edit-info-input:hover:not(:disabled) {
+  border-color: #1226aa;
+}
+
+.edit-info-unit {
+  color: #1226aa;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-width: 24px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
 .submit-button {
   padding: 1rem 2rem;
   background-color: #1226aa;
@@ -400,6 +634,75 @@ const submitVacationApplication = async () => {
 
   .form-container {
     padding: 1.5rem;
+  }
+
+  .vacation-edit-info {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .vacation-edit-info::before {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .edit-info-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.625rem 0;
+  }
+
+  .edit-info-label {
+    font-size: 0.85rem;
+    min-width: 100px;
+    width: 100%;
+  }
+
+  .edit-info-input {
+    width: 100px;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.85rem;
+    margin-left: auto;
+  }
+
+  .edit-info-unit {
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .vacation-edit-info {
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .vacation-edit-info::before {
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .edit-info-row {
+    gap: 0.4rem;
+    padding: 0.5rem 0;
+  }
+
+  .edit-info-label {
+    font-size: 0.8rem;
+    min-width: 90px;
+  }
+
+  .edit-info-input {
+    width: 80px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .edit-info-unit {
+    font-size: 0.8rem;
+    min-width: 20px;
   }
 }
 </style>

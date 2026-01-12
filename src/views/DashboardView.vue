@@ -2,7 +2,7 @@
   <div class="dashboard-view">
     <div class="dashboard-container">
       <h1>{{ user ? `${user.name}님 반갑습니다 !` : '대시보드' }}</h1>
-      
+      <hr class="divider"/>
       <!-- 연차 정보 카드 -->
       <div v-if="vacationInfo" class="vacation-info-card">
         <div class="vacation-info-header">
@@ -58,6 +58,11 @@
           <span class="btn-text">사용자 관리</span>
         </button>
       </div>
+
+      <!-- 휴가 캘린더 -->
+       <hr class="divider"/>
+      <VacationCalendar />
+      
     </div>
   </div>
 </template>
@@ -66,6 +71,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUserVacationInfo, type UserVacationInfoResponse } from '@/api/user'
+import VacationCalendar from '@/components/VacationCalendar.vue'
 
 const router = useRouter()
 
@@ -134,6 +140,12 @@ const goToUserManagement = () => {
 </script>
 
 <style scoped>
+.divider {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin: 2.5rem 0;
+  padding: 0;
+}
 .dashboard-view {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -249,12 +261,20 @@ const goToUserManagement = () => {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 140px;
 }
 
 .dashboard-btn:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   border-color: #17ccff;
+}
+
+.dashboard-btn:active {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn-icon {
@@ -271,28 +291,52 @@ const goToUserManagement = () => {
 @media (max-width: 768px) {
   .dashboard-view {
     padding: 1rem;
+    padding-top: 2rem;
   }
 
   .dashboard-container h1 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
+    padding-left: 0;
+    text-align: center;
   }
-}
 
-@media (max-width: 480px) {
-  .dashboard-container h1 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
+  .vacation-info-card {
+    padding: 1rem;
+    padding-left: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .vacation-info-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .vacation-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .vacation-info-item {
+    padding: 0.6rem;
+  }
+
+  .vacation-label {
+    font-size: 0.8rem;
+  }
+
+  .vacation-value {
+    font-size: 1.3rem;
   }
 
   .button-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
     padding: 0;
   }
 
   .dashboard-btn {
     padding: 2rem 1.5rem;
+    min-height: 120px;
   }
 
   .btn-icon {
@@ -301,6 +345,116 @@ const goToUserManagement = () => {
 
   .btn-text {
     font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-view {
+    padding: 0.75rem;
+    padding-top: 1.5rem;
+  }
+
+  .dashboard-container h1 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    padding-left: 0;
+  }
+
+  .vacation-info-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .vacation-info-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .vacation-info-header h3 {
+    font-size: 1rem;
+  }
+
+  .vacation-info-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .vacation-info-item {
+    padding: 0.75rem;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .vacation-label {
+    font-size: 0.85rem;
+  }
+
+  .vacation-value {
+    font-size: 1.2rem;
+    text-align: right;
+  }
+
+  .button-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0;
+  }
+
+  .dashboard-btn {
+    padding: 1.5rem 1rem;
+    min-height: 100px;
+    border-radius: 10px;
+  }
+
+  .btn-icon {
+    font-size: 2.2rem;
+  }
+
+  .btn-text {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-view {
+    padding: 0.5rem;
+    padding-top: 1rem;
+  }
+
+  .dashboard-container h1 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .vacation-info-card {
+    padding: 0.6rem;
+  }
+
+  .vacation-info-item {
+    padding: 0.6rem;
+  }
+
+  .vacation-label {
+    font-size: 0.8rem;
+  }
+
+  .vacation-value {
+    font-size: 1.1rem;
+  }
+
+  .dashboard-btn {
+    padding: 1.25rem 0.75rem;
+    min-height: 90px;
+  }
+
+  .btn-icon {
+    font-size: 2rem;
+  }
+
+  .btn-text {
+    font-size: 0.9rem;
   }
 }
 </style>

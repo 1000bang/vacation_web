@@ -717,10 +717,23 @@ const goToList = () => {
     font-size: 1.5rem;
   }
 
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+
   /* 모바일에서도 버튼 색상 유지 */
   .btn-back {
     background-color: #1226aa !important;
     color: white !important;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
   }
 
   .btn-edit {

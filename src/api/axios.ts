@@ -69,9 +69,14 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    // 401 에러이고, refresh endpoint가 아니고, 아직 재시도하지 않은 경우
+    // 401 에러이고, refresh/login/join endpoint가 아니고, 아직 재시도하지 않은 경우
+    // 로그인/회원가입 API는 인증이 필요 없는 public 엔드포인트이므로 인터셉터에서 제외
+    const isPublicEndpoint = originalRequest.url?.includes('/user/login') || 
+                             originalRequest.url?.includes('/user/join') ||
+                             originalRequest.url?.includes('/user/refresh')
+    
     if (error.response?.status === 401 && 
-        !originalRequest.url?.includes('/user/refresh') && 
+        !isPublicEndpoint && 
         !originalRequest._retry) {
       
       if (isRefreshing) {

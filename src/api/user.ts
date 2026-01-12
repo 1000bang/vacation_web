@@ -189,10 +189,12 @@ export const createRentalSupport = async (rentalSupportRequest: RentalSupportReq
 }
 
 /**
- * 월세 지원 신청 목록 조회 (청구서용)
+ * 월세 지원 신청 목록 조회 (청구서용, 페이징)
  */
-export const getRentalSupportApplicationList = async (): Promise<ApiResponse<RentalSupport[]>> => {
-  const response = await apiClient.get<ApiResponse<RentalSupport[]>>('/rental/application')
+export const getRentalSupportApplicationList = async (page: number = 0, size: number = 5): Promise<ApiResponse<any>> => {
+  const response = await apiClient.get<ApiResponse<any>>('/rental/application', {
+    params: { page, size }
+  })
   return response.data
 }
 
@@ -201,6 +203,14 @@ export const getRentalSupportApplicationList = async (): Promise<ApiResponse<Ren
  */
 export const createRentalSupportApplication = async (rentalSupportRequest: RentalSupportRequest): Promise<ApiResponse<RentalSupport>> => {
   const response = await apiClient.post<ApiResponse<RentalSupport>>('/rental/application', rentalSupportRequest)
+  return response.data
+}
+
+/**
+ * 월세 지원 신청 수정 (청구서용)
+ */
+export const updateRentalSupportApplication = async (seq: number, rentalSupportRequest: RentalSupportRequest): Promise<ApiResponse<RentalSupport>> => {
+  const response = await apiClient.put<ApiResponse<RentalSupport>>(`/rental/application/${seq}`, rentalSupportRequest)
   return response.data
 }
 
@@ -340,10 +350,12 @@ export interface ExpenseClaimRequest {
 }
 
 /**
- * 개인 비용 청구 목록 조회
+ * 개인 비용 청구 목록 조회 (페이징)
  */
-export const getExpenseClaimList = async (): Promise<ApiResponse<ExpenseClaim[]>> => {
-  const response = await apiClient.get<ApiResponse<ExpenseClaim[]>>('/expense')
+export const getExpenseClaimList = async (page: number = 0, size: number = 5): Promise<ApiResponse<any>> => {
+  const response = await apiClient.get<ApiResponse<any>>('/expense', {
+    params: { page, size }
+  })
   return response.data
 }
 

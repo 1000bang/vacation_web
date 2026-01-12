@@ -1228,10 +1228,13 @@ const calculatedRemainingDays = computed(() => {
 
   .form-actions {
     flex-direction: column;
+    gap: 0.75rem;
   }
 
   .btn {
     width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
   }
 
   /* 모바일에서도 버튼 색상 유지 */
@@ -1243,21 +1246,46 @@ const calculatedRemainingDays = computed(() => {
   .btn-add {
     background-color: #17ccff !important;
     color: white !important;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
   }
 
   .btn-edit {
     background-color: #1226aa !important;
     color: white !important;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
   }
 
   .btn-delete {
     background-color: #0d1f7a !important;
     color: white !important;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
   }
 
   .btn-cancel {
     background-color: #999 !important;
     color: white !important;
+  }
+
+  .vacation-edit-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .vacation-edit-actions .btn {
+    width: 100%;
+  }
+
+  .rental-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .rental-actions .btn {
+    width: 100%;
   }
 }
 </style>

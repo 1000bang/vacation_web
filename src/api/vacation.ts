@@ -8,6 +8,10 @@ export interface VacationRequest {
   vacationType: string
   requestedVacationDays: number
   reason?: string
+  // 수정 모드용 연차 정보 (선택적)
+  annualVacationDays?: number
+  previousRemainingDays?: number
+  remainingVacationDays?: number
 }
 
 // 휴가 내역 응답 타입
@@ -21,6 +25,9 @@ export interface VacationHistory {
   reason?: string
   requestDate: string
   applicant?: string
+  annualVacationDays?: number
+  previousRemainingDays?: number
+  remainingVacationDays?: number
 }
 
 // API 응답 타입
@@ -35,7 +42,7 @@ export interface ApiResponse<T> {
  * 휴가 신청
  */
 export const createVacation = async (vacationRequest: VacationRequest): Promise<ApiResponse<VacationHistory>> => {
-  const requestData = {
+  const requestData: any = {
     requestDate: vacationRequest.requestDate,
     startDate: vacationRequest.startDate,
     endDate: vacationRequest.endDate,
@@ -43,15 +50,42 @@ export const createVacation = async (vacationRequest: VacationRequest): Promise<
     period: vacationRequest.requestedVacationDays,
     reason: vacationRequest.reason || ''
   }
+  // 수정 모드용 연차 정보가 있으면 포함
+  if (vacationRequest.annualVacationDays !== undefined) {
+    requestData.annualVacationDays = vacationRequest.annualVacationDays
+  }
+  if (vacationRequest.previousRemainingDays !== undefined) {
+    requestData.previousRemainingDays = vacationRequest.previousRemainingDays
+  }
+  if (vacationRequest.remainingVacationDays !== undefined) {
+    requestData.remainingVacationDays = vacationRequest.remainingVacationDays
+  }
   const response = await apiClient.post<ApiResponse<VacationHistory>>('/vacation', requestData)
   return response.data
 }
 
 /**
- * 휴가 내역 목록 조회
+ * 휴가 내역 목록 조회 (페이징)
  */
-export const getVacationHistoryList = async (): Promise<ApiResponse<VacationHistory[]>> => {
-  const response = await apiClient.get<ApiResponse<VacationHistory[]>>('/vacation/history')
+export const getVacationHistoryList = async (page: number = 0, size: number = 5): Promise<ApiResponse<any>> => {
+  const response = await apiClient.get<ApiResponse<any>>('/vacation/history', {
+    params: { page, size }
+  })
+  return response.data
+}
+
+/**
+ * 캘린더용 휴가 목록 조회 (본부 전체, 현재 월 기준 전후 1개월)
+ */
+export const getCalendarVacationList = async (year?: number, month?: number): Promise<ApiResponse<VacationHistory[]>> => {
+  const params: Record<string, string> = {}
+  if (year !== undefined) {
+    params.year = year.toString()
+  }
+  if (month !== undefined) {
+    params.month = month.toString()
+  }
+  const response = await apiClient.get<ApiResponse<VacationHistory[]>>('/vacation/calendar', { params })
   return response.data
 }
 
@@ -94,6 +128,32 @@ export const downloadVacationDocument = async (seq: number, applicant?: string):
     blob: response.data,
     filename
   }
+}
+
+/**
+ * 휴가 신청 수정
+ */
+export const updateVacation = async (seq: number, vacationRequest: VacationRequest): Promise<ApiResponse<VacationHistory>> => {
+  const requestData: any = {
+    requestDate: vacationRequest.requestDate,
+    startDate: vacationRequest.startDate,
+    endDate: vacationRequest.endDate,
+    vacationType: vacationRequest.vacationType,
+    period: vacationRequest.requestedVacationDays,
+    reason: vacationRequest.reason || ''
+  }
+  // 수정 모드용 연차 정보가 있으면 포함
+  if (vacationRequest.annualVacationDays !== undefined) {
+    requestData.annualVacationDays = vacationRequest.annualVacationDays
+  }
+  if (vacationRequest.previousRemainingDays !== undefined) {
+    requestData.previousRemainingDays = vacationRequest.previousRemainingDays
+  }
+  if (vacationRequest.remainingVacationDays !== undefined) {
+    requestData.remainingVacationDays = vacationRequest.remainingVacationDays
+  }
+  const response = await apiClient.put<ApiResponse<VacationHistory>>(`/vacation/${seq}`, requestData)
+  return response.data
 }
 
 /**

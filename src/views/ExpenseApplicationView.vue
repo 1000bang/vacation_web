@@ -1,7 +1,10 @@
 <template>
   <div class="expense-application-view">
     <div class="header-section">
-      <h1>개인 비용 신청</h1>
+      <div class="header-title-wrapper">
+        <h1>{{ isEditMode ? '개인 비용 수정' : '개인 비용 신청' }}</h1>
+        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+      </div>
     </div>
 
     <div class="form-wrapper">
@@ -103,7 +106,7 @@
 
           <div class="form-actions">
             <button type="submit" class="submit-button" :disabled="isSubmitting">
-              {{ isSubmitting ? '신청 중...' : '신청하기' }}
+              {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
             </button>
           </div>
         </form>
@@ -121,13 +124,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { createExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { createExpenseClaim, updateExpenseClaim, getExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import expenseImage from '@/assets/image/help/expense.png'
 
 const router = useRouter()
+const route = useRoute()
+
+const isEditMode = computed(() => !!route.params.seq)
+const expenseSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
+
+// 뒤로가기 함수
+const goBack = () => {
+  router.push('/my-applications')
+}
 
 // 도움말 모달 상태
 const helpModal = reactive<{
@@ -304,9 +316,43 @@ const removeExpenseItem = (index: number) => {
   }
 }
 
-onMounted(() => {
-  // 사용자 정보는 서버에서 userId로 자동 처리됨
+onMounted(async () => {
+  // 수정 모드인 경우 기존 데이터 로드
+  if (isEditMode.value && expenseSeq.value) {
+    await loadExpenseClaimData(expenseSeq.value)
+  }
 })
+
+// 기존 개인 비용 신청 데이터 로드
+const loadExpenseClaimData = async (seq: number) => {
+  try {
+    const response = await getExpenseClaim(seq)
+    const detail = response.resultMsg
+    
+    if (detail && detail.expenseClaim) {
+      const claim = detail.expenseClaim
+      expenseForm.requestDate = claim.requestDate || getTodayDate()
+      expenseForm.month = claim.billingYyMonth ? Math.floor(claim.billingYyMonth % 100) : null
+      
+      // 비용 항목 목록 채우기
+      if (detail.expenseSubList && detail.expenseSubList.length > 0) {
+        expenseForm.expenseItems = detail.expenseSubList.map(sub => ({
+          date: sub.date || '',
+          usageDetail: sub.usageDetail || '',
+          vendor: sub.vendor || '',
+          paymentMethod: sub.paymentMethod || '',
+          project: sub.project || '',
+          amount: sub.amount || 0,
+          note: sub.note || ''
+        }))
+      }
+    }
+  } catch (error) {
+    console.error('개인 비용 신청 데이터 조회 실패:', error)
+    alert('개인 비용 신청 데이터를 불러오는데 실패했습니다.')
+    router.push('/my-applications')
+  }
+}
 
 const submitExpenseApplication = async () => {
   // 필수 항목 검증
@@ -341,22 +387,30 @@ const submitExpenseApplication = async () => {
       }))
     }
     
-    const response = await createExpenseClaim(request)
-    // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
-    if (response.resultMsg && response.resultMsg.seq) {
-      router.push({
-        path: '/application-success',
-        query: {
-          type: 'expense',
-          seq: response.resultMsg.seq
-        }
-      })
-    } else {
+    if (isEditMode.value && expenseSeq.value) {
+      // 수정 모드
+      const response = await updateExpenseClaim(expenseSeq.value, request)
+      alert('수정되었습니다.')
       router.push('/my-applications')
+    } else {
+      // 신청 모드
+      const response = await createExpenseClaim(request)
+      // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
+      if (response.resultMsg && response.resultMsg.seq) {
+        router.push({
+          path: '/application-success',
+          query: {
+            type: 'expense',
+            seq: response.resultMsg.seq
+          }
+        })
+      } else {
+        router.push('/my-applications')
+      }
     }
   } catch (error: any) {
-    console.error('개인 비용 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '개인 비용 신청에 실패했습니다.'
+    console.error(isEditMode.value ? '개인 비용 수정 실패:' : '개인 비용 신청 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '개인 비용 수정에 실패했습니다.' : '개인 비용 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false
@@ -377,11 +431,33 @@ const submitExpenseApplication = async () => {
   text-align: left;
 }
 
+.header-title-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .header-section h1 {
   color: #2c3e50;
   font-size: 2rem;
   margin: 0;
   padding-left: 30px;
+}
+
+.btn-back {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.btn-back:hover {
+  background-color: #5a6268;
 }
 
 .form-wrapper {

@@ -8,7 +8,7 @@
       <!-- 휴가 신청 목록 (테이블 형식) -->
       <div class="application-section">
         <h2>휴가 신청</h2>
-        <div v-if="vacationHistory.length === 0" class="empty-state">
+        <div v-if="vacationHistoryAll.length === 0" class="empty-state">
           신청한 휴가가 없습니다.
         </div>
         <div v-else class="table-container">
@@ -24,13 +24,18 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="vacation in vacationHistory" :key="vacation.seq">
+              <tr 
+                v-for="vacation in vacationHistory" 
+                :key="vacation.seq"
+                @click="handleEditVacation(vacation.seq)"
+                class="clickable-row"
+              >
                 <td>{{ formatDate(vacation.requestDate) }}</td>
                 <td>{{ formatDate(vacation.startDate) }} ~ {{ formatDate(vacation.endDate) }}</td>
                 <td>{{ vacation.period }}일</td>
                 <td>{{ getVacationTypeName(vacation.type) }}</td>
                 <td>{{ vacation.reason || '-' }}</td>
-                <td>
+                <td @click.stop>
                   <div class="action-buttons">
                     <button
                       @click="handleDownloadVacation(vacation.seq)"
@@ -52,12 +57,32 @@
             </tbody>
           </table>
         </div>
+        <!-- 페이징 버튼 -->
+        <div v-if="showVacationPagination" class="pagination">
+          <button 
+            @click="vacationCurrentPage = Math.max(1, vacationCurrentPage - 1)"
+            :disabled="vacationCurrentPage === 1"
+            class="pagination-btn"
+          >
+            이전
+          </button>
+          <span class="pagination-info">
+            {{ vacationCurrentPage }} / {{ vacationTotalPages }}
+          </span>
+          <button 
+            @click="vacationCurrentPage = Math.min(vacationTotalPages, vacationCurrentPage + 1)"
+            :disabled="vacationCurrentPage === vacationTotalPages"
+            class="pagination-btn"
+          >
+            다음
+          </button>
+        </div>
       </div>
 
       <!-- 개인 비용 신청 목록 (테이블 형식) -->
       <div class="application-section">
         <h2>개인 비용 신청</h2>
-        <div v-if="expenseClaimList.length === 0" class="empty-state">
+        <div v-if="expenseClaimListAll.length === 0" class="empty-state">
           신청한 개인 비용이 없습니다.
         </div>
         <div v-else class="table-container">
@@ -78,15 +103,14 @@
                 <tr 
                   class="parent-row"
                   :class="{ 'expanded': expandedExpenseClaims.includes(expense.seq) }"
-                  @click="toggleExpenseDetail(expense.seq)"
                 >
-                  <td class="expand-icon">
+                  <td class="expand-icon" @click.stop="toggleExpenseDetail(expense.seq)">
                     <span class="icon">{{ expandedExpenseClaims.includes(expense.seq) ? '▼' : '▶' }}</span>
                   </td>
-                  <td>{{ formatDate(expense.requestDate) }}</td>
-                  <td>{{ formatBillingYyMonth(expense.billingYyMonth) }}</td>
-                  <td>{{ expense.childCnt }}개</td>
-                  <td>{{ formatNumber(expense.totalAmount || 0) }}원</td>
+                  <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatDate(expense.requestDate) }}</td>
+                  <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatBillingYyMonth(expense.billingYyMonth) }}</td>
+                  <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ expense.childCnt }}개</td>
+                  <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatNumber(expense.totalAmount || 0) }}원</td>
                   <td @click.stop>
                     <div class="action-buttons">
                       <button
@@ -141,12 +165,32 @@
             </tbody>
           </table>
         </div>
+        <!-- 페이징 버튼 -->
+        <div v-if="showExpensePagination" class="pagination">
+          <button 
+            @click="expenseCurrentPage = Math.max(1, expenseCurrentPage - 1)"
+            :disabled="expenseCurrentPage === 1"
+            class="pagination-btn"
+          >
+            이전
+          </button>
+          <span class="pagination-info">
+            {{ expenseCurrentPage }} / {{ expenseTotalPages }}
+          </span>
+          <button 
+            @click="expenseCurrentPage = Math.min(expenseTotalPages, expenseCurrentPage + 1)"
+            :disabled="expenseCurrentPage === expenseTotalPages"
+            class="pagination-btn"
+          >
+            다음
+          </button>
+        </div>
       </div>
 
       <!-- 월세 지원 신청 목록 (테이블 형식) -->
       <div class="application-section">
         <h2>월세 지원 신청</h2>
-        <div v-if="rentalSupportApplicationList.length === 0" class="empty-state">
+        <div v-if="rentalSupportApplicationListAll.length === 0" class="empty-state">
           신청한 월세 지원 신청이 없습니다.
         </div>
         <div v-else class="table-container">
@@ -163,14 +207,19 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rental in rentalSupportApplicationList" :key="rental.seq">
+              <tr 
+                v-for="rental in rentalSupportApplicationList" 
+                :key="rental.seq"
+                @click="handleEditRentalApplication(rental.seq)"
+                class="clickable-row"
+              >
                 <td>{{ formatDate(rental.requestDate) }}</td>
                 <td>{{ formatBillingYyMonth(rental.billingYyMonth || 0) }}</td>
                 <td>{{ formatDate(rental.billingPeriodStartDate) }} ~ {{ formatDate(rental.billingPeriodEndDate) }}</td>
                 <td>{{ formatNumber(rental.contractMonthlyRent) }}원</td>
                 <td>{{ formatNumber(rental.billingAmount) }}원</td>
                 <td>{{ formatDate(rental.paymentDate) }}</td>
-                <td>
+                <td @click.stop>
                   <div class="action-buttons">
                     <button
                       @click="handleDownloadRentalApplication(rental.seq)"
@@ -191,6 +240,26 @@
               </tr>
             </tbody>
           </table>
+        </div>
+        <!-- 페이징 버튼 -->
+        <div v-if="showRentalPagination" class="pagination">
+          <button 
+            @click="rentalCurrentPage = Math.max(1, rentalCurrentPage - 1)"
+            :disabled="rentalCurrentPage === 1"
+            class="pagination-btn"
+          >
+            이전
+          </button>
+          <span class="pagination-info">
+            {{ rentalCurrentPage }} / {{ rentalTotalPages }}
+          </span>
+          <button 
+            @click="rentalCurrentPage = Math.min(rentalTotalPages, rentalCurrentPage + 1)"
+            :disabled="rentalCurrentPage === rentalTotalPages"
+            class="pagination-btn"
+          >
+            다음
+          </button>
         </div>
       </div>
 
@@ -245,7 +314,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { getVacationHistoryList, downloadVacationDocument, deleteVacation, type VacationHistory } from '@/api/vacation'
 import { 
   getRentalSupportList, 
@@ -262,14 +332,97 @@ import {
   type ExpenseClaimDetail
 } from '@/api/user'
 
-const vacationHistory = ref<VacationHistory[]>([])
+const router = useRouter()
+
+// 전체 데이터 저장
+const vacationHistoryAll = ref<VacationHistory[]>([])
+const expenseClaimListAll = ref<ExpenseClaim[]>([])
+const rentalSupportApplicationListAll = ref<RentalSupport[]>([])
+
+// totalCount 저장
+const vacationTotalCount = ref(0)
+const expenseTotalCount = ref(0)
+const rentalTotalCount = ref(0)
+
+// 페이징 관련
+const itemsPerPage = 5
+const vacationCurrentPage = ref(1)
+const expenseCurrentPage = ref(1)
+const rentalCurrentPage = ref(1)
+
+// 페이지별 데이터 (서버에서 페이징된 데이터를 그대로 사용)
+const vacationHistory = computed(() => vacationHistoryAll.value)
+const expenseClaimList = computed(() => expenseClaimListAll.value)
+const rentalSupportApplicationList = computed(() => rentalSupportApplicationListAll.value)
+
+// 총 페이지 수 계산 (totalCount 사용)
+const vacationTotalPages = computed(() => Math.ceil(vacationTotalCount.value / itemsPerPage))
+const expenseTotalPages = computed(() => Math.ceil(expenseTotalCount.value / itemsPerPage))
+const rentalTotalPages = computed(() => Math.ceil(rentalTotalCount.value / itemsPerPage))
+
+// 페이지 버튼 표시 여부 (totalCount가 5개 이상일 때만)
+const showVacationPagination = computed(() => vacationTotalCount.value >= itemsPerPage)
+const showExpensePagination = computed(() => expenseTotalCount.value >= itemsPerPage)
+const showRentalPagination = computed(() => rentalTotalCount.value >= itemsPerPage)
+
 const rentalSupportList = ref<RentalSupport[]>([])
-const rentalSupportApplicationList = ref<RentalSupport[]>([])
-const expenseClaimList = ref<ExpenseClaim[]>([])
 const expenseDetailMap = ref<Record<number, ExpenseClaimDetail & { totalAmount: number }>>({})
 const expandedExpenseClaims = ref<number[]>([])
 const isDownloading = ref<number | null>(null)
 const isDeleting = ref<number | null>(null)
+
+// 데이터 로드 함수
+const loadVacationHistory = async (page: number = 0) => {
+  try {
+    const vacationResponse = await getVacationHistoryList(page, itemsPerPage)
+    const vacationData = vacationResponse.resultMsg as any
+    vacationHistoryAll.value = vacationData?.list || []
+    vacationTotalCount.value = vacationData?.totalCount || 0
+  } catch (error) {
+    console.error('휴가 신청 목록 조회 실패:', error)
+  }
+}
+
+const loadExpenseClaimList = async (page: number = 0) => {
+  try {
+    const expenseResponse = await getExpenseClaimList(page, itemsPerPage)
+    const expenseData = expenseResponse.resultMsg as any
+    expenseClaimListAll.value = expenseData?.list || []
+    expenseTotalCount.value = expenseData?.totalCount || 0
+  } catch (error) {
+    console.error('개인 비용 신청 목록 조회 실패:', error)
+  }
+}
+
+const loadRentalApplicationList = async (page: number = 0) => {
+  try {
+    const rentalApplicationResponse = await getRentalSupportApplicationList(page, itemsPerPage)
+    const rentalApplicationData = rentalApplicationResponse.resultMsg as any
+    rentalSupportApplicationListAll.value = rentalApplicationData?.list || []
+    rentalTotalCount.value = rentalApplicationData?.totalCount || 0
+  } catch (error) {
+    console.error('월세 지원 신청 목록 조회 실패:', error)
+  }
+}
+
+// 페이지 변경 감지
+watch(vacationCurrentPage, (newPage) => {
+  if (newPage > 0) {
+    loadVacationHistory(newPage - 1) // 프론트엔드는 1부터 시작, 백엔드는 0부터 시작
+  }
+})
+
+watch(expenseCurrentPage, (newPage) => {
+  if (newPage > 0) {
+    loadExpenseClaimList(newPage - 1)
+  }
+})
+
+watch(rentalCurrentPage, (newPage) => {
+  if (newPage > 0) {
+    loadRentalApplicationList(newPage - 1)
+  }
+})
 
 // 날짜 포맷팅
 const formatDate = (dateString: string | undefined): string => {
@@ -315,7 +468,7 @@ const handleDownloadVacation = async (seq: number) => {
   isDownloading.value = seq
   try {
     // vacationHistory에서 해당 seq의 applicant 찾기
-    const vacation = vacationHistory.value.find(v => v.seq === seq)
+    const vacation = vacationHistoryAll.value.find(v => v.seq === seq)
     const applicant = vacation?.applicant
     
     const { blob, filename } = await downloadVacationDocument(seq, applicant)
@@ -339,8 +492,8 @@ const handleDownloadVacation = async (seq: number) => {
 const handleDownloadRentalApplication = async (seq: number) => {
   isDownloading.value = seq
   try {
-    // rentalSupportApplicationList에서 해당 seq의 applicant 찾기
-    const rental = rentalSupportApplicationList.value.find(r => r.seq === seq)
+    // rentalSupportApplicationListAll에서 해당 seq의 applicant 찾기
+    const rental = rentalSupportApplicationListAll.value.find(r => r.seq === seq)
     const applicant = rental?.applicant
     
     const { blob, filename } = await downloadRentalSupportApplication(seq, applicant)
@@ -358,6 +511,21 @@ const handleDownloadRentalApplication = async (seq: number) => {
   } finally {
     isDownloading.value = null
   }
+}
+
+// 휴가 신청 수정 페이지로 이동
+const handleEditVacation = (seq: number) => {
+  router.push(`/vacation-application/${seq}`)
+}
+
+// 월세 지원 신청 수정 페이지로 이동
+const handleEditRentalApplication = (seq: number) => {
+  router.push(`/rental-application/${seq}`)
+}
+
+// 개인 비용 신청 수정 페이지로 이동
+const handleEditExpenseClaim = (seq: number) => {
+  router.push(`/expense-application/${seq}`)
 }
 
 // 개인 비용 상세 정보 토글
@@ -394,8 +562,8 @@ const toggleExpenseDetail = async (seq: number) => {
 const handleDownloadExpenseClaim = async (seq: number) => {
   isDownloading.value = seq
   try {
-    // expenseClaimList에서 해당 seq의 applicant 찾기
-    const expense = expenseClaimList.value.find(e => e.seq === seq)
+    // expenseClaimListAll에서 해당 seq의 applicant 찾기
+    const expense = expenseClaimListAll.value.find(e => e.seq === seq)
     const applicant = expense?.applicant
     
     const { blob, filename } = await downloadExpenseClaim(seq, applicant)
@@ -450,9 +618,13 @@ const handleDeleteVacation = async (seq: number) => {
   try {
     await deleteVacation(seq)
     alert('삭제되었습니다.')
-    // 목록 새로고침
-    const vacationResponse = await getVacationHistoryList()
-    vacationHistory.value = vacationResponse.resultMsg || []
+    // 목록 새로고침 (현재 페이지 유지)
+    await loadVacationHistory(vacationCurrentPage.value - 1)
+    // 삭제 후 현재 페이지가 유효하지 않으면 마지막 페이지로 이동
+    if (vacationCurrentPage.value > vacationTotalPages.value && vacationTotalPages.value > 0) {
+      vacationCurrentPage.value = vacationTotalPages.value
+      await loadVacationHistory(vacationCurrentPage.value - 1)
+    }
   } catch (error: any) {
     console.error('삭제 실패:', error)
     const errorCode = error.response?.data?.resultMsg?.errorCode
@@ -479,9 +651,13 @@ const handleDeleteExpenseClaim = async (seq: number) => {
   try {
     await deleteExpenseClaim(seq)
     alert('삭제되었습니다.')
-    // 목록 새로고침
-    const expenseResponse = await getExpenseClaimList()
-    expenseClaimList.value = expenseResponse.resultMsg || []
+    // 목록 새로고침 (현재 페이지 유지)
+    await loadExpenseClaimList(expenseCurrentPage.value - 1)
+    // 삭제 후 현재 페이지가 유효하지 않으면 마지막 페이지로 이동
+    if (expenseCurrentPage.value > expenseTotalPages.value && expenseTotalPages.value > 0) {
+      expenseCurrentPage.value = expenseTotalPages.value
+      await loadExpenseClaimList(expenseCurrentPage.value - 1)
+    }
     // 상세 정보 맵에서도 제거
     delete expenseDetailMap.value[seq]
     const index = expandedExpenseClaims.value.indexOf(seq)
@@ -514,9 +690,13 @@ const handleDeleteRentalApplication = async (seq: number) => {
   try {
     await deleteRentalSupportApplication(seq)
     alert('삭제되었습니다.')
-    // 목록 새로고침
-    const rentalApplicationResponse = await getRentalSupportApplicationList()
-    rentalSupportApplicationList.value = rentalApplicationResponse.resultMsg || []
+    // 목록 새로고침 (현재 페이지 유지)
+    await loadRentalApplicationList(rentalCurrentPage.value - 1)
+    // 삭제 후 현재 페이지가 유효하지 않으면 마지막 페이지로 이동
+    if (rentalCurrentPage.value > rentalTotalPages.value && rentalTotalPages.value > 0) {
+      rentalCurrentPage.value = rentalTotalPages.value
+      await loadRentalApplicationList(rentalCurrentPage.value - 1)
+    }
   } catch (error: any) {
     console.error('삭제 실패:', error)
     const errorCode = error.response?.data?.resultMsg?.errorCode
@@ -536,16 +716,16 @@ const handleDeleteRentalApplication = async (seq: number) => {
 onMounted(async () => {
   try {
     // 휴가 신청 목록 로드
-    const vacationResponse = await getVacationHistoryList()
-    vacationHistory.value = vacationResponse.resultMsg || []
+    await loadVacationHistory(0)
+    vacationCurrentPage.value = 1
 
     // 개인 비용 신청 목록 로드
-    const expenseResponse = await getExpenseClaimList()
-    expenseClaimList.value = expenseResponse.resultMsg || []
+    await loadExpenseClaimList(0)
+    expenseCurrentPage.value = 1
 
     // 월세 지원 신청 목록 로드 (청구서)
-    const rentalApplicationResponse = await getRentalSupportApplicationList()
-    rentalSupportApplicationList.value = rentalApplicationResponse.resultMsg || []
+    await loadRentalApplicationList(0)
+    rentalCurrentPage.value = 1
 
     // 월세 지원 품의 목록 로드 (품의서)
     const rentalResponse = await getRentalSupportList()
@@ -744,26 +924,49 @@ onMounted(async () => {
   background-color: #f5f5f5;
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background-color: #e8f4f8 !important;
+}
+
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 .parent-row {
-  cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.parent-row:hover {
-  background-color: #f0f0f0;
+/* parent-row 호버 시 expand-icon을 제외한 나머지 셀들에 호버 효과 */
+.parent-row:hover td:not(.expand-icon) {
+  background-color: #e8f4f8;
 }
 
 .parent-row.expanded {
   background-color: #e8f4f8;
 }
 
+.parent-row.expanded td:not(.expand-icon) {
+  background-color: #e8f4f8;
+}
+
+.clickable-cell {
+  cursor: pointer;
+}
+
 .expand-icon {
   text-align: center;
   padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* expand-icon은 따로 호버 효과 */
+.expand-icon:hover {
+  background-color: #d0e8f0;
 }
 
 .expand-icon .icon {
@@ -822,6 +1025,44 @@ onMounted(async () => {
 
 .expense-detail-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* 페이징 스타일 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #1226aa;
+  color: white;
+  border-color: #1226aa;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {

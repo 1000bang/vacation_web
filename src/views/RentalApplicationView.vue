@@ -1,7 +1,10 @@
 <template>
   <div class="rental-application-view">
     <div class="header-section">
-      <h1>월세 지원 신청</h1>
+      <div class="header-title-wrapper">
+        <h1>{{ isEditMode ? '월세 지원 수정' : '월세 지원 신청' }}</h1>
+        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+      </div>
     </div>
 
     <div class="form-wrapper">
@@ -186,7 +189,7 @@
 
           <div class="form-actions">
             <button type="submit" class="submit-button" :disabled="isSubmitting">
-              {{ isSubmitting ? '신청 중...' : '신청하기' }}
+              {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
             </button>
           </div>
         </form>
@@ -204,9 +207,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { createRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { createRentalSupportApplication, updateRentalSupportApplication, getRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import rentalContPeriodImage from '@/assets/image/help/rental_cont_period.png'
 import rentalContractPriceImage from '@/assets/image/help/rental_contract_price.png'
@@ -215,6 +218,15 @@ import rentalBillingPeriodImage from '@/assets/image/help/rental_billing_period.
 import rentalPaymentDateImage from '@/assets/image/help/rental_paymentDate.png'
 
 const router = useRouter()
+const route = useRoute()
+
+const isEditMode = computed(() => !!route.params.seq)
+const rentalSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
+
+// 뒤로가기 함수
+const goBack = () => {
+  router.push('/my-applications')
+}
 
 // 도움말 모달 상태
 const helpModal = reactive<{
@@ -591,30 +603,82 @@ const fillFormFromRentalSupport = (rentalSupport: any) => {
 }
 
 onMounted(async () => {
-  // 신청일자 기준으로 청구월 자동 계산
-  const calculatedMonth = calculateBillingMonth(rentalForm.requestDate)
-  if (calculatedMonth !== null) {
-    rentalForm.month = calculatedMonth
-  }
-  
-  // 월세 지원 정보 목록 조회하여 가장 최신 정보로 폼 채우기
-  try {
-    const response = await getRentalSupportList()
-    const rentalSupportList = response.resultMsg
-    
-    if (rentalSupportList && rentalSupportList.length > 0) {
-      // seq가 가장 큰 것(가장 최신)을 선택
-      const latestRentalSupport = rentalSupportList.reduce((prev: any, current: any) => {
-        return (prev.seq > current.seq) ? prev : current
-      })
-      
-      fillFormFromRentalSupport(latestRentalSupport)
+  // 수정 모드인 경우 기존 데이터 로드
+  if (isEditMode.value && rentalSeq.value) {
+    await loadRentalApplicationData(rentalSeq.value)
+  } else {
+    // 신청 모드인 경우 신청일자 기준으로 청구월 자동 계산
+    const calculatedMonth = calculateBillingMonth(rentalForm.requestDate)
+    if (calculatedMonth !== null) {
+      rentalForm.month = calculatedMonth
     }
-  } catch (error) {
-    console.error('월세 지원 정보 조회 실패:', error)
-    // 에러가 발생해도 계속 진행 (새로 작성하는 경우)
+    
+    // 월세 지원 정보 목록 조회하여 가장 최신 정보로 폼 채우기
+    try {
+      const response = await getRentalSupportList()
+      const rentalSupportList = response.resultMsg
+      
+      if (rentalSupportList && rentalSupportList.length > 0) {
+        // seq가 가장 큰 것(가장 최신)을 선택
+        const latestRentalSupport = rentalSupportList.reduce((prev: any, current: any) => {
+          return (prev.seq > current.seq) ? prev : current
+        })
+        
+        fillFormFromRentalSupport(latestRentalSupport)
+      }
+    } catch (error) {
+      console.error('월세 지원 정보 조회 실패:', error)
+      // 에러가 발생해도 계속 진행 (새로 작성하는 경우)
+    }
   }
 })
+
+// 기존 월세 지원 신청 데이터 로드
+const loadRentalApplicationData = async (seq: number) => {
+  try {
+    const response = await getRentalSupportApplication(seq)
+    const rental = response.resultMsg
+    
+    if (rental) {
+      rentalForm.requestDate = rental.requestDate || getTodayDate()
+      rentalForm.month = rental.billingYyMonth ? Math.floor(rental.billingYyMonth % 100) : null
+      rentalForm.contractStartDate = rental.contractStartDate || ''
+      rentalForm.contractEndDate = rental.contractEndDate || ''
+      rentalForm.contractMonthlyRent = rental.contractMonthlyRent || 0
+      // paymentType 변환: 백엔드에서 한글 값("선불", "후불")로 올 수 있으므로 변환 필요
+      if (rental.paymentType) {
+        const paymentTypeStr = String(rental.paymentType)
+        if (paymentTypeStr === '선불' || paymentTypeStr === 'PREPAID') {
+          rentalForm.paymentType = 'PREPAID'
+        } else if (paymentTypeStr === '후불' || paymentTypeStr === 'POSTPAID') {
+          rentalForm.paymentType = 'POSTPAID'
+        } else {
+          rentalForm.paymentType = 'POSTPAID' // 기본값
+        }
+      } else {
+        rentalForm.paymentType = 'POSTPAID' // 기본값
+      }
+      rentalForm.billingStartDate = rental.billingStartDate || ''
+      rentalForm.billingPeriodStartDate = rental.billingPeriodStartDate || ''
+      rentalForm.billingPeriodEndDate = rental.billingPeriodEndDate || ''
+      rentalForm.paymentDate = rental.paymentDate || ''
+      rentalForm.paymentAmount = rental.paymentAmount || 0
+      rentalForm.billingAmount = rental.billingAmount || 0
+      
+      // 디버깅을 위한 로그
+      console.log('월세 지원 신청 데이터 로드:', {
+        seq,
+        paymentType: rental.paymentType,
+        paymentTypeType: typeof rental.paymentType,
+        setPaymentType: rentalForm.paymentType
+      })
+    }
+  } catch (error) {
+    console.error('월세 지원 신청 데이터 조회 실패:', error)
+    alert('월세 지원 신청 데이터를 불러오는데 실패했습니다.')
+    router.push('/my-applications')
+  }
+}
 
 const submitRentalApplication = async () => {
   if (!rentalForm.requestDate || !rentalForm.month || !rentalForm.contractStartDate || 
@@ -643,22 +707,30 @@ const submitRentalApplication = async () => {
       billingAmount: rentalForm.billingAmount
     }
     
-    const response = await createRentalSupportApplication(request)
-    // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
-    if (response.resultMsg && response.resultMsg.seq) {
-      router.push({
-        path: '/application-success',
-        query: {
-          type: 'rental',
-          seq: response.resultMsg.seq
-        }
-      })
-    } else {
+    if (isEditMode.value && rentalSeq.value) {
+      // 수정 모드
+      await updateRentalSupportApplication(rentalSeq.value, request)
+      alert('수정되었습니다.')
       router.push('/my-applications')
+    } else {
+      // 신청 모드
+      const response = await createRentalSupportApplication(request)
+      // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
+      if (response.resultMsg && response.resultMsg.seq) {
+        router.push({
+          path: '/application-success',
+          query: {
+            type: 'rental',
+            seq: response.resultMsg.seq
+          }
+        })
+      } else {
+        router.push('/my-applications')
+      }
     }
   } catch (error: any) {
-    console.error('월세 지원 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '월세 지원 신청에 실패했습니다.'
+    console.error(isEditMode.value ? '월세 지원 수정 실패:' : '월세 지원 신청 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '월세 지원 수정에 실패했습니다.' : '월세 지원 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false
@@ -679,11 +751,33 @@ const submitRentalApplication = async () => {
   text-align: left;
 }
 
+.header-title-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .header-section h1 {
   color: #2c3e50;
   font-size: 2rem;
   margin: 0;
   padding-left: 30px;
+}
+
+.btn-back {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.btn-back:hover {
+  background-color: #5a6268;
 }
 
 .form-wrapper {
