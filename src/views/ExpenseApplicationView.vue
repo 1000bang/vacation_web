@@ -2,8 +2,8 @@
   <div class="expense-application-view">
     <div class="header-section">
       <div class="header-title-wrapper">
-        <h1>{{ isEditMode ? '개인 비용 수정' : '개인 비용 신청' }}</h1>
-        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+        <h1>{{ isApprovalMode ? '개인 비용 결재' : (isEditMode ? '개인 비용 수정' : '개인 비용 신청') }}</h1>
+        <button v-if="isEditMode || isApprovalMode" @click="goBack" class="btn-back">뒤로가기</button>
       </div>
     </div>
 
@@ -13,12 +13,12 @@
         <form class="form" @submit.prevent="submitExpenseApplication">
           <div class="form-group">
             <label>신청일자 <span class="required">*</span></label>
-            <input type="date" v-model="expenseForm.requestDate" required />
+            <input type="date" v-model="expenseForm.requestDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
             <label>청구 월 <span class="required">*</span></label>
-            <select v-model.number="expenseForm.month" required class="form-select">
+            <select v-model.number="expenseForm.month" :disabled="isApprovalMode" required class="form-select">
               <option :value="null">월 선택</option>
               <option v-for="month in 12" :key="month" :value="month">
                 {{ month }}월
@@ -49,23 +49,23 @@
               <div class="expense-item-grid">
                 <div class="form-group">
                   <label>일자</label>
-                  <input type="date" v-model="item.date" />
+                  <input type="date" v-model="item.date" :disabled="isApprovalMode" />
                 </div>
                 <div class="form-group">
                   <label>사용 내역</label>
-                  <input type="text" v-model="item.usageDetail" />
+                  <input type="text" v-model="item.usageDetail" :disabled="isApprovalMode" />
                 </div>
                 <div class="form-group">
                   <label>거래처</label>
-                  <input type="text" v-model="item.vendor" />
+                  <input type="text" v-model="item.vendor" :disabled="isApprovalMode" />
                 </div>
                 <div class="form-group">
                   <label>결재방법</label>
-                  <input type="text" v-model="item.paymentMethod" />
+                  <input type="text" v-model="item.paymentMethod" :disabled="isApprovalMode" />
                 </div>
                 <div class="form-group">
                   <label>프로젝트</label>
-                  <input type="text" v-model="item.project" />
+                  <input type="text" v-model="item.project" :disabled="isApprovalMode" />
                 </div>
                 <div class="form-group">
                   <label>금액(원)</label>
@@ -75,6 +75,7 @@
                       :value="item.amount || ''"
                       @input="handleExpenseAmountInput($event, index)"
                       @keypress="handleKeyPress"
+                      :disabled="isApprovalMode"
                     />
                     <div v-if="item.amount && item.amount >= 10000" class="unit-text-below">
                       {{ formatKoreanWon(item.amount) }}
@@ -83,16 +84,16 @@
                 </div>
                 <div class="form-group full-width">
                   <label>비고</label>
-                  <input type="text" v-model="item.note" />
+                  <input type="text" v-model="item.note" :disabled="isApprovalMode" />
                 </div>
               </div>
-              <div class="expense-item-actions">
+              <div class="expense-item-actions" v-if="!isApprovalMode">
                 <button type="button" @click="removeExpenseItem(index)" class="btn btn-danger btn-sm">
                   삭제
                 </button>
               </div>
             </div>
-            <div class="expense-items-actions">
+            <div class="expense-items-actions" v-if="!isApprovalMode">
               <button
                 type="button"
                 @click="addExpenseItem"
@@ -104,7 +105,41 @@
             </div>
           </div>
 
-          <div class="form-actions">
+          <!-- 결재 모드일 때 승인/반려 버튼 표시 -->
+          <div v-if="isApprovalMode" class="approval-actions">
+            <!-- 최종 승인 상태(C)일 때는 다운로드 버튼 -->
+            <button 
+              v-if="currentExpenseClaim?.approvalStatus === 'C'"
+              type="button"
+              @click="handleDownloadExpenseClaim"
+              class="btn btn-download"
+              :disabled="isDownloading"
+            >
+              {{ isDownloading ? '다운로드 중...' : '다운로드' }}
+            </button>
+            <!-- 그 외 상태일 때는 승인/반려 버튼 -->
+            <template v-else>
+              <button 
+                type="button"
+                @click="handleApprove"
+                class="btn btn-approve"
+                :disabled="isSubmitting || !canApprove"
+              >
+                {{ isSubmitting ? '처리 중...' : '승인하기' }}
+              </button>
+              <button 
+                type="button"
+                @click="handleReject"
+                class="btn btn-reject"
+                :disabled="isSubmitting || !canReject"
+              >
+                {{ isSubmitting ? '처리 중...' : '반려하기' }}
+              </button>
+            </template>
+          </div>
+          
+          <!-- 일반 모드일 때만 제출 버튼 표시 -->
+          <div v-else class="form-actions">
             <button type="submit" class="submit-button" :disabled="isSubmitting">
               {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
             </button>
@@ -120,6 +155,25 @@
       alt-text="비용 항목 도움말"
       @close="closeHelpModal"
     />
+
+    <!-- 반려 모달 -->
+    <div v-if="showRejectModal" class="modal-overlay" @click="closeRejectModal">
+      <div class="modal-content" @click.stop>
+        <h3>반려 사유 입력</h3>
+        <textarea 
+          v-model="rejectionReason" 
+          placeholder="반려 사유를 입력해주세요."
+          rows="5"
+          class="reject-reason-input"
+        ></textarea>
+        <div class="modal-actions">
+          <button @click="closeRejectModal" class="btn btn-cancel">취소</button>
+          <button @click="confirmReject" class="btn btn-reject" :disabled="!rejectionReason.trim() || isSubmitting">
+            반려하기
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -127,6 +181,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { createExpenseClaim, updateExpenseClaim, getExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
+import { 
+  approveExpenseClaimByTeamLeader, 
+  rejectExpenseClaimByTeamLeader, 
+  approveExpenseClaimByDivisionHead, 
+  rejectExpenseClaimByDivisionHead 
+} from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import expenseImage from '@/assets/image/help/expense.png'
 
@@ -134,11 +194,16 @@ const router = useRouter()
 const route = useRoute()
 
 const isEditMode = computed(() => !!route.params.seq)
+const isApprovalMode = computed(() => route.query.approval === 'true')
 const expenseSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
 
 // 뒤로가기 함수
 const goBack = () => {
-  router.push('/my-applications')
+  if (isApprovalMode.value) {
+    router.push('/approval-list')
+  } else {
+    router.push('/my-applications')
+  }
 }
 
 // 도움말 모달 상태
@@ -193,6 +258,11 @@ const expenseForm = reactive<{
 })
 
 const isSubmitting = ref(false)
+const isDownloading = ref(false)
+const user = ref<{ authVal: string; name?: string } | null>(null)
+const showRejectModal = ref(false)
+const rejectionReason = ref('')
+const currentExpenseClaim = ref<any>(null)
 
 // 숫자를 한글 만원 단위로 변환
 const formatKoreanWon = (amount: number): string => {
@@ -317,8 +387,18 @@ const removeExpenseItem = (index: number) => {
 }
 
 onMounted(async () => {
-  // 수정 모드인 경우 기존 데이터 로드
-  if (isEditMode.value && expenseSeq.value) {
+  // 사용자 정보 로드
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      user.value = JSON.parse(userStr)
+    } catch (e) {
+      console.error('Failed to parse user data:', e)
+    }
+  }
+  
+  // 수정 모드 또는 결재 모드인 경우 기존 데이터 로드
+  if ((isEditMode.value || isApprovalMode.value) && expenseSeq.value) {
     await loadExpenseClaimData(expenseSeq.value)
   }
 })
@@ -331,6 +411,7 @@ const loadExpenseClaimData = async (seq: number) => {
     
     if (detail && detail.expenseClaim) {
       const claim = detail.expenseClaim
+      currentExpenseClaim.value = claim
       expenseForm.requestDate = claim.requestDate || getTodayDate()
       expenseForm.month = claim.billingYyMonth ? Math.floor(claim.billingYyMonth % 100) : null
       
@@ -350,7 +431,170 @@ const loadExpenseClaimData = async (seq: number) => {
   } catch (error) {
     console.error('개인 비용 신청 데이터 조회 실패:', error)
     alert('개인 비용 신청 데이터를 불러오는데 실패했습니다.')
-    router.push('/my-applications')
+    if (isApprovalMode.value) {
+      router.push('/approval-list')
+    } else {
+      router.push('/my-applications')
+    }
+  }
+}
+
+// 승인 가능 여부 확인
+const canApprove = computed(() => {
+  if (!user.value || !currentExpenseClaim.value) return false
+  const authVal = user.value.authVal
+  const status = currentExpenseClaim.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 승인 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 승인 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 승인 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 반려 가능 여부 확인
+const canReject = computed(() => {
+  if (!user.value || !currentExpenseClaim.value) return false
+  const authVal = user.value.authVal
+  const status = currentExpenseClaim.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 반려 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 반려 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 반려 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 승인 처리
+const handleApprove = async () => {
+  if (!expenseSeq.value || !user.value) return
+  
+  if (!confirm('승인하시겠습니까?')) {
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await approveExpenseClaimByTeamLeader(expenseSeq.value)
+    } else if (authVal === 'bb') {
+      await approveExpenseClaimByDivisionHead(expenseSeq.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentExpenseClaim.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await approveExpenseClaimByTeamLeader(expenseSeq.value)
+      } else if (status === 'B') {
+        await approveExpenseClaimByDivisionHead(expenseSeq.value)
+      }
+    }
+    
+    alert('승인되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('승인 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '승인 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 반려 처리
+const handleReject = () => {
+  if (!canReject.value) return
+  showRejectModal.value = true
+}
+
+// 반려 모달 닫기
+const closeRejectModal = () => {
+  showRejectModal.value = false
+  rejectionReason.value = ''
+}
+
+// 개인 비용 청구서 다운로드
+const handleDownloadExpenseClaim = async () => {
+  if (!expenseSeq.value) return
+  
+  isDownloading.value = true
+  try {
+    const applicant = currentExpenseClaim.value?.userId ? 
+      (user.value?.name || '') : undefined
+    const { blob, filename } = await downloadExpenseClaim(expenseSeq.value, applicant)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('다운로드 실패:', error)
+    alert('다운로드에 실패했습니다.')
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+// 반려 확정 처리
+const confirmReject = async () => {
+  if (!expenseSeq.value || !user.value || !rejectionReason.value.trim()) {
+    alert('반려 사유를 입력해주세요.')
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await rejectExpenseClaimByTeamLeader(expenseSeq.value, rejectionReason.value)
+    } else if (authVal === 'bb') {
+      await rejectExpenseClaimByDivisionHead(expenseSeq.value, rejectionReason.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentExpenseClaim.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await rejectExpenseClaimByTeamLeader(expenseSeq.value, rejectionReason.value)
+      } else if (status === 'B') {
+        await rejectExpenseClaimByDivisionHead(expenseSeq.value, rejectionReason.value)
+      }
+    }
+    
+    alert('반려되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('반려 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '반려 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+    closeRejectModal()
   }
 }
 
@@ -696,6 +940,124 @@ const submitExpenseApplication = async () => {
   .expense-item-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* 결재 모드 스타일 */
+.approval-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.approval-actions .btn {
+  flex: 1;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-approve {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.btn-reject {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 반려 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+}
+
+.reject-reason-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 1.5rem;
+}
+
+.reject-reason-input:focus {
+  outline: none;
+  border-color: #17ccff;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
+}
+
+.btn-download {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download:hover:not(:disabled) {
+  background-color: #0f1f88;
 }
 </style>
 

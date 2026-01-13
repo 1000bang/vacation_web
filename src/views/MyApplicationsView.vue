@@ -20,6 +20,7 @@
                 <th>일수</th>
                 <th>구분</th>
                 <th>사유</th>
+                <th>승인상태</th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -35,6 +36,11 @@
                 <td>{{ vacation.period }}일</td>
                 <td>{{ getVacationTypeName(vacation.type) }}</td>
                 <td>{{ vacation.reason || '-' }}</td>
+                <td>
+                  <span :class="getApprovalStatusClass(vacation.approvalStatus)">
+                    {{ getApprovalStatusName(vacation.approvalStatus) }}
+                  </span>
+                </td>
                 <td @click.stop>
                   <div class="action-buttons">
                     <button
@@ -45,6 +51,7 @@
                       {{ isDownloading === vacation.seq ? '다운로드 중...' : '다운로드' }}
                     </button>
                     <button
+                      v-if="canDeleteVacation(vacation.approvalStatus)"
                       @click="handleDeleteVacation(vacation.seq)"
                       class="btn btn-delete btn-small"
                       :disabled="isDeleting === vacation.seq"
@@ -94,6 +101,7 @@
                 <th>청구월</th>
                 <th>항목 수</th>
                 <th>총 금액</th>
+                <th>승인상태</th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -111,6 +119,11 @@
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatBillingYyMonth(expense.billingYyMonth) }}</td>
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ expense.childCnt }}개</td>
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatNumber(expense.totalAmount || 0) }}원</td>
+                  <td>
+                    <span :class="getApprovalStatusClass(expense.approvalStatus)">
+                      {{ getApprovalStatusName(expense.approvalStatus) }}
+                    </span>
+                  </td>
                   <td @click.stop>
                     <div class="action-buttons">
                       <button
@@ -121,6 +134,7 @@
                         {{ isDownloading === expense.seq ? '다운로드 중...' : '다운로드' }}
                       </button>
                       <button
+                        v-if="canDeleteExpenseClaim(expense.approvalStatus)"
                         @click="handleDeleteExpenseClaim(expense.seq)"
                         class="btn btn-delete btn-small"
                         :disabled="isDeleting === expense.seq"
@@ -132,7 +146,7 @@
                 </tr>
                 <!-- 자식 행들 (펼쳐질 때만 표시) -->
                 <tr v-if="expandedExpenseClaims.includes(expense.seq)" class="child-row">
-                  <td colspan="6">
+                  <td colspan="7">
                     <div class="expense-detail-container">
                       <table class="expense-detail-table">
                         <thead>
@@ -203,6 +217,7 @@
                 <th>계약 월세</th>
                 <th>청구 금액</th>
                 <th>납입일</th>
+                <th>승인상태</th>
                 <th>작업</th>
               </tr>
             </thead>
@@ -219,6 +234,11 @@
                 <td>{{ formatNumber(rental.contractMonthlyRent) }}원</td>
                 <td>{{ formatNumber(rental.billingAmount) }}원</td>
                 <td>{{ formatDate(rental.paymentDate) }}</td>
+                <td>
+                  <span :class="getApprovalStatusClass(rental.approvalStatus)">
+                    {{ getApprovalStatusName(rental.approvalStatus) }}
+                  </span>
+                </td>
                 <td @click.stop>
                   <div class="action-buttons">
                     <button
@@ -229,6 +249,7 @@
                       {{ isDownloading === rental.seq ? '다운로드 중...' : '다운로드' }}
                     </button>
                     <button
+                      v-if="canDeleteRentalApplication(rental.approvalStatus)"
                       @click="handleDeleteRentalApplication(rental.seq)"
                       class="btn btn-delete btn-small"
                       :disabled="isDeleting === rental.seq"
@@ -448,6 +469,55 @@ const formatBillingYyMonth = (billingYyMonth: number): string => {
 }
 
 // 휴가 구분 한글 변환
+// 승인 상태 한글 변환
+const getApprovalStatusName = (status: string | undefined | null): string => {
+  // null이면 "A"로 간주 (초기 생성 상태)
+  const actualStatus = status || 'A'
+  const statusMap: Record<string, string> = {
+    'A': '요청',
+    'AM': '수정후 재요청',
+    'B': '팀장 승인',
+    'RB': '팀장 반려',
+    'C': '본부장 승인',
+    'RC': '본부장 반려'
+  }
+  return statusMap[actualStatus] || actualStatus
+}
+
+// 승인 상태 스타일 클래스 (반려: 빨간색, 최종승인: 초록색)
+const getApprovalStatusClass = (status: string | undefined | null): string => {
+  // null이면 "A"로 간주 (초기 생성 상태)
+  const actualStatus = status || 'A'
+  // 반려 상태만 빨간색
+  if (actualStatus === 'RB' || actualStatus === 'RC') {
+    return 'status-rejected'
+  }
+  // 최종 승인 상태만 초록색
+  if (actualStatus === 'C') {
+    return 'status-final-approved'
+  }
+  // 나머지는 기본 색상
+  return 'status-default'
+}
+
+// 휴가 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
+const canDeleteVacation = (status: string | undefined | null): boolean => {
+  const actualStatus = status || 'A'
+  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
+}
+
+// 개인 비용 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
+const canDeleteExpenseClaim = (status: string | undefined | null): boolean => {
+  const actualStatus = status || 'A'
+  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
+}
+
+// 월세 지원 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
+const canDeleteRentalApplication = (status: string | undefined | null): boolean => {
+  const actualStatus = status || 'A'
+  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
+}
+
 const getVacationTypeName = (type: string): string => {
   const typeMap: Record<string, string> = {
     'YEONCHA': '연차',
@@ -913,11 +983,26 @@ onMounted(async () => {
   vertical-align: middle;
 }
 
+.data-table td:last-child {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .data-table td .action-buttons {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
   align-items: center;
+  min-width: calc(2 * (0.4rem * 2 + 0.8rem * 2 + 2.5rem) + 0.5rem);
+  width: calc(2 * (0.4rem * 2 + 0.8rem * 2 + 2.5rem) + 0.5rem);
+  margin: 0 auto;
+}
+
+/* 다운로드 버튼만 있을 때도 동일한 크기 유지 */
+.data-table td .action-buttons .btn-download:only-child {
+  min-width: calc(2 * (0.4rem * 2 + 0.8rem * 2 + 2.5rem) + 0.5rem);
+  width: calc(2 * (0.4rem * 2 + 0.8rem * 2 + 2.5rem) + 0.5rem);
 }
 
 .data-table tbody tr:hover {
@@ -1065,6 +1150,22 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+/* 승인 상태 스타일 */
+.status-rejected {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.status-final-approved {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.status-default {
+  color: #666;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
   .my-applications-view {
     padding: 1rem;
@@ -1147,12 +1248,26 @@ onMounted(async () => {
     text-align: center;
   }
 
+  .data-table td:last-child {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
   /* 버튼 크기 조정 */
   .action-buttons {
     flex-direction: column;
     gap: 0.3rem;
-    min-width: 70px;
+    min-width: calc(2 * (0.5rem * 2 + 0.5rem * 2 + 2.5rem) + 0.3rem);
+    width: calc(2 * (0.5rem * 2 + 0.5rem * 2 + 2.5rem) + 0.3rem);
     align-items: stretch;
+    margin: 0 auto;
+  }
+
+  /* 다운로드 버튼만 있을 때도 동일한 크기 유지 */
+  .action-buttons .btn-download:only-child {
+    min-width: calc(2 * (0.5rem * 2 + 0.5rem * 2 + 2.5rem) + 0.3rem);
+    width: calc(2 * (0.5rem * 2 + 0.5rem * 2 + 2.5rem) + 0.3rem);
   }
 
   .btn-small {

@@ -14,6 +14,48 @@
         <div class="header-right">
           <div v-if="user" class="user-info">
             <span class="user-name">{{ user.division }}/{{ user.team }} {{ user.name }} {{ user.position }}</span>
+            <!-- 알람 아이콘 -->
+            <div class="alarm-container">
+              <button 
+                class="btn btn-alarm" 
+                :class="{ 'has-unread': unreadAlarmCount > 0 }"
+                @click.stop="toggleAlarmModal"
+              >
+                <img :src="alertImage" alt="알람" class="alarm-icon" />
+                <span v-if="unreadAlarmCount > 0" class="alarm-badge">N</span>
+              </button>
+              
+              <!-- 알람 모달 (알람 아이콘 바로 아래) -->
+              <div v-if="showAlarmModal" class="alarm-modal-content" @click.stop>
+                <div class="alarm-modal-header">
+                  <h3>알람</h3>
+                  <div class="alarm-modal-actions">
+                    <button v-if="unreadAlarmCount > 0" @click="markAllAsRead" class="btn-mark-all-read">
+                      모두 읽음 처리
+                    </button>
+                    <button @click="closeAlarmModal" class="btn-close-modal">✕</button>
+                  </div>
+                </div>
+                <div class="alarm-list">
+                  <div v-if="alarms.length === 0" class="alarm-empty">
+                    알람이 없습니다.
+                  </div>
+                  <div 
+                    v-for="alarm in alarms" 
+                    :key="alarm.seq"
+                    class="alarm-item"
+                    :class="{ 'unread': !alarm.isRead }"
+                    @click="handleAlarmClick(alarm)"
+                  >
+                    <div class="alarm-content">
+                      <p class="alarm-message">{{ alarm.message }}</p>
+                      <span class="alarm-date">{{ formatAlarmDate(alarm.createdAt) }}</span>
+                    </div>
+                    <div v-if="!alarm.isRead" class="alarm-unread-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <button @click="handleMyInfo" class="btn btn-my-info">
               <span class="btn-text">내 정보</span>
               <div class="btn-icon-wrapper">
@@ -39,15 +81,20 @@
     <main class="main-content">
       <RouterView />
     </main>
+    
+    <!-- 알람 모달 오버레이 (배경 클릭 시 닫기) -->
+    <div v-if="showAlarmModal" class="alarm-modal-overlay" @click="closeAlarmModal"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import logoImage from '@/assets/image/logo/KP_CI_simbol.png'
-import myPageImage from '@/assets/image/logo/Mypage.png'
+import myPageImage from '@/assets/image/logo/user.png'
 import logoutImage from '@/assets/image/logo/logout.png'
+import alertImage from '@/assets/image/logo/alert.png'
+import { getUnreadAlarms, getAllAlarms, markAlarmAsRead, markAllAlarmsAsRead, type UserAlarm } from '@/api/alarm'
 
 const router = useRouter()
 const route = useRoute()
@@ -63,22 +110,128 @@ interface User {
 }
 
 const user = ref<User | null>(null)
+const alarms = ref<UserAlarm[]>([])
+const showAlarmModal = ref(false)
+let alarmInterval: number | null = null
 
 const isLoginPage = computed(() => route.path === '/login')
 const isJoinPage = computed(() => route.path === '/join')
+const unreadAlarmCount = computed(() => alarms.value.filter(a => !a.isRead).length)
 
 const updateUser = () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
     try {
       user.value = JSON.parse(userStr)
+      // 사용자가 로그인되어 있으면 알람 로드
+      if (user.value && !alarmInterval) {
+        loadAlarms()
+        // 30초마다 알람 새로고침
+        alarmInterval = window.setInterval(loadAlarms, 30000)
+      }
     } catch (e) {
       console.error('Failed to parse user data:', e)
       user.value = null
+      // 로그아웃 시 알람 인터벌 정리
+      if (alarmInterval !== null) {
+        clearInterval(alarmInterval)
+        alarmInterval = null
+      }
+      alarms.value = []
     }
   } else {
     user.value = null
+    // 로그아웃 시 알람 인터벌 정리
+    if (alarmInterval !== null) {
+      clearInterval(alarmInterval)
+      alarmInterval = null
+    }
+    alarms.value = []
   }
+}
+
+// 알람 로드
+const loadAlarms = async () => {
+  if (!user.value) return
+  try {
+    const response = await getUnreadAlarms()
+    alarms.value = response.resultMsg || []
+  } catch (error) {
+    console.error('알람 로드 실패:', error)
+  }
+}
+
+// 알람 모달 토글
+const toggleAlarmModal = async () => {
+  showAlarmModal.value = !showAlarmModal.value
+  if (showAlarmModal.value) {
+    // 모달 열 때 모든 알람 로드
+    try {
+      const response = await getAllAlarms()
+      alarms.value = response.resultMsg || []
+    } catch (error) {
+      console.error('알람 로드 실패:', error)
+    }
+  }
+}
+
+// 알람 모달 닫기
+const closeAlarmModal = () => {
+  showAlarmModal.value = false
+}
+
+// 알람 클릭 처리
+const handleAlarmClick = async (alarm: UserAlarm) => {
+  // 읽지 않은 알람이면 읽음 처리
+  if (!alarm.isRead) {
+    try {
+      await markAlarmAsRead(alarm.seq)
+      alarm.isRead = true
+    } catch (error) {
+      console.error('알람 읽음 처리 실패:', error)
+    }
+  }
+  
+  // 모달 닫기
+  closeAlarmModal()
+  
+  // 알람 타입에 따라 이동
+  if (alarm.redirectUrl) {
+    router.push(alarm.redirectUrl)
+  }
+}
+
+// 모두 읽음 처리
+const markAllAsRead = async () => {
+  try {
+    await markAllAlarmsAsRead()
+    alarms.value.forEach(alarm => {
+      alarm.isRead = true
+    })
+    await loadAlarms() // 읽지 않은 알람 목록 새로고침
+  } catch (error) {
+    console.error('모두 읽음 처리 실패:', error)
+  }
+}
+
+// 알람 날짜 포맷팅
+const formatAlarmDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  if (hours < 24) return `${hours}시간 전`
+  if (days < 7) return `${days}일 전`
+  
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}.${month}.${day}`
 }
 
 onMounted(() => {
@@ -89,6 +242,21 @@ onMounted(() => {
   
   // 같은 탭에서의 변경 감지를 위한 커스텀 이벤트
   window.addEventListener('user-updated', updateUser)
+  
+  // 사용자가 로그인되어 있으면 알람 로드 및 주기적 갱신
+  if (user.value) {
+    loadAlarms()
+    // 30초마다 알람 새로고침
+    alarmInterval = window.setInterval(loadAlarms, 30000)
+  }
+})
+
+onUnmounted(() => {
+  if (alarmInterval !== null) {
+    clearInterval(alarmInterval)
+  }
+  window.removeEventListener('storage', updateUser)
+  window.removeEventListener('user-updated', updateUser)
 })
 
 const handleMyInfo = () => {
@@ -626,6 +794,211 @@ const handleLogout = () => {
     font-size: 0.55rem;
     color: #2c3e50;
     font-weight: 700;
+  }
+}
+
+/* 알람 스타일 */
+.alarm-container {
+  position: relative;
+  margin-right: 0.5rem;
+}
+
+.btn-alarm {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: auto;
+}
+
+.btn-alarm:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+}
+
+.alarm-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+}
+
+.alarm-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+}
+
+/* 알람 모달 */
+.alarm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+}
+
+.alarm-modal-content {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 400px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.alarm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.alarm-modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #2c3e50;
+}
+
+.alarm-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-mark-all-read {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-mark-all-read:hover {
+  background: #0056b3;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close-modal:hover {
+  color: #000;
+}
+
+.alarm-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.alarm-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #999;
+}
+
+.alarm-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.alarm-item:hover {
+  background-color: #f8f9fa;
+}
+
+.alarm-item.unread {
+  background-color: #e3f2fd;
+}
+
+.alarm-item.unread:hover {
+  background-color: #bbdefb;
+}
+
+.alarm-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.alarm-message {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  line-height: 1.4;
+}
+
+.alarm-date {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.alarm-unread-indicator {
+  width: 8px;
+  height: 8px;
+  background: #007bff;
+  border-radius: 50%;
+  margin-left: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .alarm-modal-content {
+    width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+    right: -1rem;
+    max-height: 60vh;
+  }
+  
+  .alarm-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+  
+  .alarm-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 0.65rem;
   }
 }
 </style>

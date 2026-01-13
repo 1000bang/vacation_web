@@ -57,6 +57,15 @@
           <span class="btn-icon">🧑🏻‍💻</span>
           <span class="btn-text">사용자 관리</span>
         </button>
+        
+        <button 
+          v-if="canManageUsers" 
+          @click="goToApprovalList" 
+          class="dashboard-btn admin-btn"
+        >
+          <span class="btn-icon">✅</span>
+          <span class="btn-text">나의 결재 목록</span>
+        </button>
       </div>
 
       <!-- 휴가 캘린더 -->
@@ -136,6 +145,10 @@ const goToRentalApplication = () => {
 const goToUserManagement = () => {
   // TODO: 사용자 관리 페이지로 이동
   router.push('/user-management')
+}
+
+const goToApprovalList = () => {
+  router.push('/approval-list')
 }
 </script>
 

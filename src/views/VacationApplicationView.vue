@@ -2,8 +2,8 @@
   <div class="vacation-application-view">
     <div class="header-section">
       <div class="header-title-wrapper">
-        <h1>{{ isEditMode ? '휴가(결무) 수정' : '휴가(결무) 신청' }}</h1>
-        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+        <h1>{{ isApprovalMode ? '휴가(결무) 결재' : (isEditMode ? '휴가(결무) 수정' : '휴가(결무) 신청') }}</h1>
+        <button v-if="isEditMode || isApprovalMode" @click="goBack" class="btn-back">뒤로가기</button>
       </div>
     </div>
 
@@ -24,6 +24,7 @@
               type="date" 
               v-model="vacationForm.requestDate" 
               :max="getTodayDate()"
+              :disabled="isApprovalMode"
               required 
             />
           </div>
@@ -34,6 +35,7 @@
               type="date" 
               v-model="vacationForm.startDate" 
               :min="minStartDate"
+              :disabled="isApprovalMode"
               required 
             />
           </div>
@@ -44,13 +46,14 @@
               type="date" 
               v-model="vacationForm.endDate" 
               :min="minEndDate"
+              :disabled="isApprovalMode"
               required 
             />
           </div>
 
           <div class="form-group">
             <label>휴가 구분 <span class="required">*</span></label>
-            <select v-model="vacationForm.vacationType" required>
+            <select v-model="vacationForm.vacationType" :disabled="isApprovalMode" required>
               <option value="">선택하세요</option>
               <option value="YEONCHA">연차</option>
               <option value="GYEONGJO">경조</option>
@@ -68,6 +71,7 @@
             <label>신청연차일수 <span class="required">*</span></label>
             <select
               v-model.number="vacationForm.requestedVacationDays"
+              :disabled="isApprovalMode"
               required
             >
               <option value="">선택하세요</option>
@@ -133,33 +137,105 @@
 
           <div class="form-group">
             <label>사유</label>
-            <textarea v-model="vacationForm.reason" rows="3"></textarea>
+            <textarea v-model="vacationForm.reason" rows="3" :disabled="isApprovalMode"></textarea>
           </div>
 
-          <button type="submit" class="submit-button" :disabled="isSubmitting">
+          <!-- 반려 상태일 때 반려 사유 표시 -->
+          <div v-if="(currentVacation?.approvalStatus === 'RB' || currentVacation?.approvalStatus === 'RC') && rejectionReasonFromServer" class="form-group rejection-reason-group">
+            <label class="rejection-label">반려 사유</label>
+            <div class="rejection-reason-box">
+              {{ rejectionReasonFromServer }}
+            </div>
+          </div>
+
+          <!-- 결재 모드일 때 승인/반려 버튼 또는 다운로드 버튼 표시 -->
+          <div v-if="isApprovalMode" class="approval-actions">
+            <!-- 최종 승인 상태(C)일 때는 다운로드 버튼 -->
+            <button 
+              v-if="currentVacation?.approvalStatus === 'C'"
+              type="button"
+              @click="handleDownloadVacation"
+              class="btn btn-download"
+              :disabled="isDownloading"
+            >
+              {{ isDownloading ? '다운로드 중...' : '다운로드' }}
+            </button>
+            <!-- 그 외 상태일 때는 승인/반려 버튼 -->
+            <template v-else>
+              <button 
+                type="button"
+                @click="handleApprove"
+                class="btn btn-approve"
+                :disabled="isSubmitting || !canApprove"
+              >
+                {{ isSubmitting ? '처리 중...' : '승인하기' }}
+              </button>
+              <button 
+                type="button"
+                @click="handleReject"
+                class="btn btn-reject"
+                :disabled="isSubmitting || !canReject"
+              >
+                {{ isSubmitting ? '처리 중...' : '반려하기' }}
+              </button>
+            </template>
+          </div>
+          
+          <!-- 일반 모드일 때만 제출 버튼 표시 -->
+          <button v-else type="submit" class="submit-button" :disabled="isSubmitting">
             {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
           </button>
         </form>
+      </div>
+    </div>
+
+    <!-- 반려 모달 -->
+    <div v-if="showRejectModal" class="modal-overlay" @click="closeRejectModal">
+      <div class="modal-content" @click.stop>
+        <h3>반려 사유 입력</h3>
+        <textarea 
+          v-model="rejectionReason" 
+          placeholder="반려 사유를 입력해주세요."
+          rows="5"
+          class="reject-reason-input"
+        ></textarea>
+        <div class="modal-actions">
+          <button @click="closeRejectModal" class="btn btn-cancel">취소</button>
+          <button @click="confirmReject" class="btn btn-reject" :disabled="!rejectionReason.trim() || isSubmitting">
+            반려하기
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getUserVacationInfo, type UserVacationInfoResponse } from '@/api/user'
-import { createVacation, updateVacation, getVacationHistory, type VacationRequest, type VacationHistory } from '@/api/vacation'
+import { createVacation, updateVacation, getVacationHistory, downloadVacationDocument, type VacationRequest, type VacationHistory } from '@/api/vacation'
+import { 
+  approveVacationByTeamLeader, 
+  rejectVacationByTeamLeader, 
+  approveVacationByDivisionHead, 
+  rejectVacationByDivisionHead 
+} from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
 
 const isEditMode = computed(() => !!route.params.seq)
+const isApprovalMode = computed(() => route.query.approval === 'true')
 const vacationSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
 
 // 뒤로가기 함수
 const goBack = () => {
-  router.push('/my-applications')
+  if (isApprovalMode.value) {
+    router.push('/approval-list')
+  } else {
+    router.push('/my-applications')
+  }
 }
 
 // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
@@ -187,6 +263,12 @@ const vacationForm = ref({
 const vacationInfo = ref<UserVacationInfoResponse | null>(null)
 const currentVacation = ref<VacationHistory | null>(null)
 const isSubmitting = ref(false)
+const isDownloading = ref(false)
+const user = ref<{ authVal: string; name?: string } | null>(null)
+const showRejectModal = ref(false)
+const rejectionReason = ref('')
+const rejectionReasonFromServer = ref<string | null>(null)
+const isDataLoaded = ref(false) // 초기 데이터 로드 완료 여부
 
 // 신청일자보다 이전 날짜를 비활성화하기 위한 최소 날짜 계산
 const minStartDate = computed(() => {
@@ -228,21 +310,45 @@ const calculatedVacationDays = computed(() => {
 // 신청연차일수 선택 옵션
 const vacationDaysOptions = computed(() => {
   const baseDays = calculatedVacationDays.value
+  let options: number[] = []
+  
   if (baseDays <= 0) {
-    return []
+    // 계산된 값이 없을 때
+    // 수정 모드이고 기존 period가 있으면 그것만 포함
+    if (isEditMode.value && currentVacation.value?.period) {
+      options = [currentVacation.value.period]
+    }
+    return options
   }
   
   // 같은 날이면 1일과 0.5일
   if (isSameDay.value) {
-    return [1, 0.5]
+    options = [1, 0.5]
+  } else {
+    // 다른 날이면 계산된 값과 계산된 값 - 0.5
+    options = [baseDays, baseDays - 0.5]
   }
   
-  // 다른 날이면 계산된 값과 계산된 값 - 0.5
-  return [baseDays, baseDays - 0.5]
+  // 수정 모드이고 기존 period가 옵션에 없으면 추가
+  if (isEditMode.value && currentVacation.value?.period) {
+    const existingPeriod = currentVacation.value.period
+    if (!options.includes(existingPeriod)) {
+      options.push(existingPeriod)
+      // 중복 제거 및 내림차순 정렬
+      options = [...new Set(options)].sort((a, b) => b - a)
+    }
+  }
+  
+  return options
 })
 
 // 시작일과 종료일이 변경될 때 신청연차일수 초기화
 watch([() => vacationForm.value.startDate, () => vacationForm.value.endDate], () => {
+  // 초기 데이터 로드가 완료되지 않았으면 watch 실행하지 않음 (초기값 유지)
+  if (!isDataLoaded.value) {
+    return
+  }
+  
   if (vacationForm.value.startDate && vacationForm.value.endDate) {
     // 오전반차 또는 오후반차인 경우 0.5로 설정
     if (vacationForm.value.vacationType === 'AM_HALF' || vacationForm.value.vacationType === 'PM_HALF') {
@@ -283,39 +389,84 @@ watch(() => vacationForm.value.vacationType, (newType) => {
   }
 })
 
+// 수정 모드에서 신청연차일수가 변경되면 잔여연차일수 자동 계산
+watch(() => vacationForm.value.requestedVacationDays, (newValue) => {
+  if (isEditMode.value && vacationForm.value.previousRemainingDays != null) {
+    // 잔여 연차 = 직전 잔여 연차 - 신청 연차 일수
+    vacationForm.value.remainingVacationDays = vacationForm.value.previousRemainingDays - (newValue || 0)
+  }
+}, { immediate: false })
+
 onMounted(async () => {
-  // 연차 정보 로드
-  await loadVacationInfo()
+  // 사용자 정보 로드
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      user.value = JSON.parse(userStr)
+    } catch (e) {
+      console.error('Failed to parse user data:', e)
+    }
+  }
   
-  // 수정 모드인 경우 기존 데이터 로드
-  if (isEditMode.value && vacationSeq.value) {
+  // 연차 정보 로드 (결재 모드가 아닐 때만)
+  if (!isApprovalMode.value) {
+    await loadVacationInfo()
+  }
+  
+  // 수정 모드 또는 결재 모드인 경우 기존 데이터 로드
+  if ((isEditMode.value || isApprovalMode.value) && vacationSeq.value) {
     await loadVacationData(vacationSeq.value)
   } else {
     // 신청 모드인 경우 신청일자를 오늘로 설정
     vacationForm.value.requestDate = getTodayDate()
+    // 신청 모드에서는 즉시 watch가 동작하도록 설정
+    isDataLoaded.value = true
   }
 })
 
 // 기존 휴가 데이터 로드
 const loadVacationData = async (seq: number) => {
   try {
-    const response = await getVacationHistory(seq)
-    const vacation = response.resultMsg
+    // 초기 데이터 로드 중에는 watch가 실행되지 않도록 설정
+    isDataLoaded.value = false
     
-    if (vacation) {
+    const response = await getVacationHistory(seq)
+    const result = response.resultMsg
+    
+    if (result) {
+      // API 응답이 객체인 경우 (vacationHistory와 rejectionReason 포함)
+      const vacation = result.vacationHistory || result
+      
       // 수정 모드에서 표시할 연차 정보 저장
       currentVacation.value = vacation
       
+      // 모든 데이터를 먼저 설정
       vacationForm.value.requestDate = vacation.requestDate || getTodayDate()
-      vacationForm.value.startDate = vacation.startDate
-      vacationForm.value.endDate = vacation.endDate
       vacationForm.value.vacationType = vacation.type
-      vacationForm.value.requestedVacationDays = vacation.period
       vacationForm.value.reason = vacation.reason || ''
       // 연차 정보도 폼에 로드
       vacationForm.value.annualVacationDays = vacation.annualVacationDays || 0
       vacationForm.value.previousRemainingDays = vacation.previousRemainingDays || 0
       vacationForm.value.remainingVacationDays = vacation.remainingVacationDays || 0
+      
+      // requestedVacationDays를 먼저 설정 (watch가 실행되지 않도록)
+      vacationForm.value.requestedVacationDays = vacation.period
+      
+      // startDate와 endDate를 나중에 설정 (이때 watch가 실행되지만 requestedVacationDays는 이미 설정됨)
+      vacationForm.value.startDate = vacation.startDate
+      vacationForm.value.endDate = vacation.endDate
+      
+      // 반려 사유 저장
+      if (result.rejectionReason) {
+        rejectionReasonFromServer.value = result.rejectionReason
+      } else {
+        rejectionReasonFromServer.value = null
+      }
+      
+      // 모든 데이터 로드 완료 후 watch 활성화
+      // nextTick을 사용하여 현재 실행 중인 watch가 완료된 후에 활성화
+      await nextTick()
+      isDataLoaded.value = true
     }
   } catch (error) {
     console.error('휴가 데이터 조회 실패:', error)
@@ -330,6 +481,164 @@ const loadVacationInfo = async () => {
     vacationInfo.value = response.resultMsg
   } catch (error) {
     console.error('연차 정보 조회 실패:', error)
+  }
+}
+
+// 승인 가능 여부 확인
+const canApprove = computed(() => {
+  if (!user.value || !currentVacation.value) return false
+  const authVal = user.value.authVal
+  const status = currentVacation.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 승인 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 승인 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 승인 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 반려 가능 여부 확인
+const canReject = computed(() => {
+  if (!user.value || !currentVacation.value) return false
+  const authVal = user.value.authVal
+  const status = currentVacation.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 반려 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 반려 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 반려 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 승인 처리
+const handleApprove = async () => {
+  if (!vacationSeq.value || !user.value) return
+  
+  if (!confirm('승인하시겠습니까?')) {
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await approveVacationByTeamLeader(vacationSeq.value)
+    } else if (authVal === 'bb') {
+      await approveVacationByDivisionHead(vacationSeq.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentVacation.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await approveVacationByTeamLeader(vacationSeq.value)
+      } else if (status === 'B') {
+        await approveVacationByDivisionHead(vacationSeq.value)
+      }
+    }
+    
+    alert('승인되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('승인 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '승인 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 휴가 신청서 다운로드
+const handleDownloadVacation = async () => {
+  if (!vacationSeq.value) return
+  
+  isDownloading.value = true
+  try {
+    const applicant = (user.value as any)?.name || ''
+    const { blob, filename } = await downloadVacationDocument(vacationSeq.value, applicant)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('다운로드 실패:', error)
+    alert('다운로드에 실패했습니다.')
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+// 반려 처리
+const handleReject = () => {
+  if (!canReject.value) return
+  showRejectModal.value = true
+}
+
+// 반려 모달 닫기
+const closeRejectModal = () => {
+  showRejectModal.value = false
+  rejectionReason.value = ''
+}
+
+// 반려 확정 처리
+const confirmReject = async () => {
+  if (!vacationSeq.value || !user.value || !rejectionReason.value.trim()) {
+    alert('반려 사유를 입력해주세요.')
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await rejectVacationByTeamLeader(vacationSeq.value, rejectionReason.value)
+    } else if (authVal === 'bb') {
+      await rejectVacationByDivisionHead(vacationSeq.value, rejectionReason.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentVacation.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await rejectVacationByTeamLeader(vacationSeq.value, rejectionReason.value)
+      } else if (status === 'B') {
+        await rejectVacationByDivisionHead(vacationSeq.value, rejectionReason.value)
+      }
+    }
+    
+    alert('반려되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('반려 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '반려 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+    closeRejectModal()
   }
 }
 
@@ -704,6 +1013,148 @@ const submitVacationApplication = async () => {
     font-size: 0.8rem;
     min-width: 20px;
   }
+}
+
+/* 결재 모드 스타일 */
+.approval-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.approval-actions .btn {
+  flex: 1;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-approve {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.btn-reject {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btn-download {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download:hover:not(:disabled) {
+  background-color: #0f1f88;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rejection-reason-group {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #dc3545;
+}
+
+.rejection-label {
+  color: #dc3545;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.rejection-reason-box {
+  background-color: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  padding: 1rem;
+  color: #991b1b;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.6;
+}
+
+/* 반려 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+}
+
+.reject-reason-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 1.5rem;
+}
+
+.reject-reason-input:focus {
+  outline: none;
+  border-color: #17ccff;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
 }
 </style>
 

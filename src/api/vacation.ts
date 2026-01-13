@@ -28,6 +28,13 @@ export interface VacationHistory {
   annualVacationDays?: number
   previousRemainingDays?: number
   remainingVacationDays?: number
+  approvalStatus?: string
+}
+
+// 휴가 내역 상세 조회 응답 타입
+export interface VacationHistoryDetail {
+  vacationHistory: VacationHistory
+  rejectionReason?: string
 }
 
 // API 응답 타입
@@ -92,8 +99,8 @@ export const getCalendarVacationList = async (year?: number, month?: number): Pr
 /**
  * 휴가 내역 조회
  */
-export const getVacationHistory = async (seq: number): Promise<ApiResponse<VacationHistory>> => {
-  const response = await apiClient.get<ApiResponse<VacationHistory>>(`/vacation/history/${seq}`)
+export const getVacationHistory = async (seq: number): Promise<ApiResponse<VacationHistoryDetail>> => {
+  const response = await apiClient.get<ApiResponse<VacationHistoryDetail>>(`/vacation/history/${seq}`)
   return response.data
 }
 

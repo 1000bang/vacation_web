@@ -124,8 +124,10 @@ const loadApplicationSummary = async () => {
   isLoading.value = true
   try {
     if (applicationType.value === 'vacation') {
-      const response = await getVacationHistory(applicationSeq.value)
-      const history = response.resultMsg
+      const response = await getVacationHistory(applicationSeq.value!)
+      const result = response.resultMsg
+      // API 응답이 객체인 경우 (vacationHistory와 rejectionReason 포함)
+      const history = result?.vacationHistory || result
       if (history) {
         summary.value = {
           '신청일자': formatDate(history.requestDate),

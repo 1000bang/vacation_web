@@ -164,11 +164,19 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // 403 에러 처리 (권한 없음)
-    if (error.response?.status === 403) {
+    // 403 에러 처리 (권한 없음 또는 토큰 불일치)
+    // public endpoint는 제외 (로그인/회원가입 등)
+    if (error.response?.status === 403 && !isPublicEndpoint) {
       console.error('403 Forbidden:', error)
-      // 403 에러 페이지로 이동
-      window.location.href = '/403'
+      // 세션 만료로 처리: alert 표시 후 로그아웃
+      alert('세션이 만료되었습니다. 다시 로그인해주세요.')
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('user')
+      // 사용자 정보 업데이트 이벤트 발생
+      window.dispatchEvent(new Event('user-updated'))
+      // 로그인 페이지로 이동
+      window.location.href = '/login?message=세션이 만료되었습니다'
       return Promise.reject(error)
     }
 

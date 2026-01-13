@@ -119,6 +119,28 @@ const router = createRouter({
       component: loadView('UserDetailView')
     },
     {
+      path: '/approval-list',
+      name: 'approval-list',
+      component: loadView('ApprovalListView'),
+      beforeEnter: (_to, _from, next) => {
+        // 권한 체크: tj, bb, ma만 접근 가능
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr)
+            if (user && user.authVal && (user.authVal === 'tj' || user.authVal === 'bb' || user.authVal === 'ma')) {
+              next()
+              return
+            }
+          } catch (e) {
+            console.error('Failed to parse user data:', e)
+          }
+        }
+        // 권한이 없으면 403 페이지로 이동
+        next('/403')
+      }
+    },
+    {
       path: '/application-success',
       name: 'application-success',
       component: loadView('ApplicationSuccessView')

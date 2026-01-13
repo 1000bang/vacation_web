@@ -2,8 +2,8 @@
   <div class="rental-application-view">
     <div class="header-section">
       <div class="header-title-wrapper">
-        <h1>{{ isEditMode ? '월세 지원 수정' : '월세 지원 신청' }}</h1>
-        <button v-if="isEditMode" @click="goBack" class="btn-back">뒤로가기</button>
+        <h1>{{ isApprovalMode ? '월세 지원 결재' : (isEditMode ? '월세 지원 수정' : '월세 지원 신청') }}</h1>
+        <button v-if="isEditMode || isApprovalMode" @click="goBack" class="btn-back">뒤로가기</button>
       </div>
     </div>
 
@@ -13,12 +13,12 @@
         <form class="form" @submit.prevent="submitRentalApplication">
           <div class="form-group">
             <label>신청일자 <span class="required">*</span></label>
-            <input type="date" v-model="rentalForm.requestDate" required />
+            <input type="date" v-model="rentalForm.requestDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
             <label>청구 월 <span class="required">*</span></label>
-            <select v-model.number="rentalForm.month" required class="form-select">
+            <select v-model.number="rentalForm.month" :disabled="isApprovalMode" required class="form-select">
               <option :value="null">월 선택</option>
               <option v-for="month in 12" :key="month" :value="month">
                 {{ month }}월
@@ -38,7 +38,7 @@
                 ?
               </button>
             </label>
-            <input type="date" v-model="rentalForm.contractStartDate" required />
+            <input type="date" v-model="rentalForm.contractStartDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
@@ -56,6 +56,7 @@
             <input
               type="date"
               v-model="rentalForm.contractEndDate"
+              :disabled="isApprovalMode"
               required
             />
           </div>
@@ -78,6 +79,7 @@
                 v-model="rentalForm.contractMonthlyRent"
                 @input="handleNumberInput($event, 'contractMonthlyRent')"
                 @keypress="handleKeyPress"
+                :disabled="isApprovalMode"
                 required
               />
               <div v-if="rentalForm.contractMonthlyRent >= 10000" class="unit-text-below">
@@ -88,7 +90,7 @@
 
           <div class="form-group">
             <label>선불/후불 구분 <span class="required">*</span></label>
-            <select v-model="rentalForm.paymentType" required>
+            <select v-model="rentalForm.paymentType" :disabled="isApprovalMode" required>
               <option value="">선택하세요</option>
               <option value="PREPAID">선불</option>
               <option value="POSTPAID">후불</option>
@@ -107,7 +109,7 @@
                 ?
               </button>
             </label>
-            <input type="date" v-model="rentalForm.billingStartDate" required />
+            <input type="date" v-model="rentalForm.billingStartDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
@@ -122,7 +124,7 @@
                 ?
               </button>
             </label>
-            <input type="date" v-model="rentalForm.billingPeriodStartDate" required />
+            <input type="date" v-model="rentalForm.billingPeriodStartDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
@@ -137,7 +139,7 @@
                 ?
               </button>
             </label>
-            <input type="date" v-model="rentalForm.billingPeriodEndDate" required />
+            <input type="date" v-model="rentalForm.billingPeriodEndDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
@@ -152,7 +154,7 @@
                 ?
               </button>
             </label>
-            <input type="date" v-model="rentalForm.paymentDate" required />
+            <input type="date" v-model="rentalForm.paymentDate" :disabled="isApprovalMode" required />
           </div>
 
           <div class="form-group">
@@ -163,6 +165,7 @@
                 v-model="rentalForm.paymentAmount"
                 @input="handleNumberInput($event, 'paymentAmount')"
                 @keypress="handleKeyPress"
+                :disabled="isApprovalMode"
                 required
               />
               <div v-if="rentalForm.paymentAmount >= 10000" class="unit-text-below">
@@ -179,6 +182,7 @@
                 v-model="rentalForm.billingAmount"
                 @input="handleNumberInput($event, 'billingAmount')"
                 @keypress="handleKeyPress"
+                :disabled="isApprovalMode"
                 required
               />
               <div v-if="rentalForm.billingAmount >= 10000" class="unit-text-below">
@@ -187,7 +191,41 @@
             </div>
           </div>
 
-          <div class="form-actions">
+          <!-- 결재 모드일 때 승인/반려 버튼 표시 -->
+          <div v-if="isApprovalMode" class="approval-actions">
+            <!-- 최종 승인 상태(C)일 때는 다운로드 버튼 -->
+            <button 
+              v-if="currentRentalSupport?.approvalStatus === 'C'"
+              type="button"
+              @click="handleDownloadRentalApplication"
+              class="btn btn-download"
+              :disabled="isDownloading"
+            >
+              {{ isDownloading ? '다운로드 중...' : '다운로드' }}
+            </button>
+            <!-- 그 외 상태일 때는 승인/반려 버튼 -->
+            <template v-else>
+              <button 
+                type="button"
+                @click="handleApprove"
+                class="btn btn-approve"
+                :disabled="isSubmitting || !canApprove"
+              >
+                {{ isSubmitting ? '처리 중...' : '승인하기' }}
+              </button>
+              <button 
+                type="button"
+                @click="handleReject"
+                class="btn btn-reject"
+                :disabled="isSubmitting || !canReject"
+              >
+                {{ isSubmitting ? '처리 중...' : '반려하기' }}
+              </button>
+            </template>
+          </div>
+          
+          <!-- 일반 모드일 때만 제출 버튼 표시 -->
+          <div v-else class="form-actions">
             <button type="submit" class="submit-button" :disabled="isSubmitting">
               {{ isSubmitting ? (isEditMode ? '수정 중...' : '신청 중...') : (isEditMode ? '수정하기' : '신청하기') }}
             </button>
@@ -203,6 +241,25 @@
       alt-text="월세 지원 신청 도움말"
       @close="closeHelpModal"
     />
+
+    <!-- 반려 모달 -->
+    <div v-if="showRejectModal" class="modal-overlay" @click="closeRejectModal">
+      <div class="modal-content" @click.stop>
+        <h3>반려 사유 입력</h3>
+        <textarea 
+          v-model="rejectionReason" 
+          placeholder="반려 사유를 입력해주세요."
+          rows="5"
+          class="reject-reason-input"
+        ></textarea>
+        <div class="modal-actions">
+          <button @click="closeRejectModal" class="btn btn-cancel">취소</button>
+          <button @click="confirmReject" class="btn btn-reject" :disabled="!rejectionReason.trim() || isSubmitting">
+            반려하기
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -210,6 +267,12 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { createRentalSupportApplication, updateRentalSupportApplication, getRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
+import { 
+  approveRentalSupportByTeamLeader, 
+  rejectRentalSupportByTeamLeader, 
+  approveRentalSupportByDivisionHead, 
+  rejectRentalSupportByDivisionHead 
+} from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import rentalContPeriodImage from '@/assets/image/help/rental_cont_period.png'
 import rentalContractPriceImage from '@/assets/image/help/rental_contract_price.png'
@@ -221,11 +284,16 @@ const router = useRouter()
 const route = useRoute()
 
 const isEditMode = computed(() => !!route.params.seq)
+const isApprovalMode = computed(() => route.query.approval === 'true')
 const rentalSeq = computed(() => route.params.seq ? Number(route.params.seq) : null)
 
 // 뒤로가기 함수
 const goBack = () => {
-  router.push('/my-applications')
+  if (isApprovalMode.value) {
+    router.push('/approval-list')
+  } else {
+    router.push('/my-applications')
+  }
 }
 
 // 도움말 모달 상태
@@ -282,6 +350,10 @@ const rentalForm = reactive({
 })
 
 const isSubmitting = ref(false)
+const user = ref<{ authVal: string } | null>(null)
+const showRejectModal = ref(false)
+const rejectionReason = ref('')
+const currentRentalSupport = ref<any>(null)
 
 // 숫자를 한글 만원 단위로 변환
 const formatKoreanWon = (amount: number): string => {
@@ -640,6 +712,7 @@ const loadRentalApplicationData = async (seq: number) => {
     const rental = response.resultMsg
     
     if (rental) {
+      currentRentalSupport.value = rental
       rentalForm.requestDate = rental.requestDate || getTodayDate()
       rentalForm.month = rental.billingYyMonth ? Math.floor(rental.billingYyMonth % 100) : null
       rentalForm.contractStartDate = rental.contractStartDate || ''
@@ -676,7 +749,194 @@ const loadRentalApplicationData = async (seq: number) => {
   } catch (error) {
     console.error('월세 지원 신청 데이터 조회 실패:', error)
     alert('월세 지원 신청 데이터를 불러오는데 실패했습니다.')
-    router.push('/my-applications')
+    if (isApprovalMode.value) {
+      router.push('/approval-list')
+    } else {
+      router.push('/my-applications')
+    }
+  }
+}
+
+// 승인 가능 여부 확인
+const canApprove = computed(() => {
+  if (!user.value || !currentRentalSupport.value) return false
+  const authVal = user.value.authVal
+  const status = currentRentalSupport.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 승인 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 승인 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 승인 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 반려 가능 여부 확인
+const canReject = computed(() => {
+  if (!user.value || !currentRentalSupport.value) return false
+  const authVal = user.value.authVal
+  const status = currentRentalSupport.value.approvalStatus || 'A'
+  
+  // 팀장: A, AM 상태만 반려 가능
+  if (authVal === 'tj') {
+    return status === 'A' || status === 'AM'
+  }
+  
+  // 본부장: B 상태만 반려 가능
+  if (authVal === 'bb') {
+    return status === 'B'
+  }
+  
+  // 관리자: 모든 상태 반려 가능
+  if (authVal === 'ma') {
+    return status === 'A' || status === 'AM' || status === 'B'
+  }
+  
+  return false
+})
+
+// 승인 처리
+const handleApprove = async () => {
+  if (!rentalSeq.value || !user.value) return
+  
+  if (!confirm('승인하시겠습니까?')) {
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await approveRentalSupportByTeamLeader(rentalSeq.value)
+    } else if (authVal === 'bb') {
+      await approveRentalSupportByDivisionHead(rentalSeq.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentRentalSupport.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await approveRentalSupportByTeamLeader(rentalSeq.value)
+      } else if (status === 'B') {
+        await approveRentalSupportByDivisionHead(rentalSeq.value)
+      }
+    }
+    
+    alert('승인되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('승인 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '승인 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 월세 지원 신청서 다운로드
+const handleDownloadRentalApplication = async () => {
+  if (!rentalSeq.value) return
+  
+  isDownloading.value = true
+  try {
+    const applicant = user.value?.name || ''
+    const { blob, filename } = await downloadRentalSupportApplication(rentalSeq.value, applicant)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('다운로드 실패:', error)
+    alert('다운로드에 실패했습니다.')
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+// 반려 처리
+const handleReject = () => {
+  if (!canReject.value) return
+  showRejectModal.value = true
+}
+
+// 반려 모달 닫기
+const closeRejectModal = () => {
+  showRejectModal.value = false
+  rejectionReason.value = ''
+}
+
+// 월세 지원 신청서 다운로드
+const handleDownloadRentalApplication = async () => {
+  if (!rentalSeq.value) return
+  
+  isDownloading.value = true
+  try {
+    const applicant = currentRentalSupport.value?.userId ? 
+      (user.value?.name || '') : undefined
+    const { blob, filename } = await downloadRentalSupportApplication(rentalSeq.value, applicant)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('다운로드 실패:', error)
+    alert('다운로드에 실패했습니다.')
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+// 반려 확정 처리
+const confirmReject = async () => {
+  if (!rentalSeq.value || !user.value || !rejectionReason.value.trim()) {
+    alert('반려 사유를 입력해주세요.')
+    return
+  }
+  
+  isSubmitting.value = true
+  try {
+    const authVal = user.value.authVal
+    
+    if (authVal === 'tj') {
+      await rejectRentalSupportByTeamLeader(rentalSeq.value, rejectionReason.value)
+    } else if (authVal === 'bb') {
+      await rejectRentalSupportByDivisionHead(rentalSeq.value, rejectionReason.value)
+    } else if (authVal === 'ma') {
+      // 관리자는 팀장 또는 본부장 역할에 따라 처리
+      const status = currentRentalSupport.value?.approvalStatus || 'A'
+      if (status === 'A' || status === 'AM') {
+        await rejectRentalSupportByTeamLeader(rentalSeq.value, rejectionReason.value)
+      } else if (status === 'B') {
+        await rejectRentalSupportByDivisionHead(rentalSeq.value, rejectionReason.value)
+      }
+    }
+    
+    alert('반려되었습니다.')
+    router.push('/approval-list')
+  } catch (error: any) {
+    console.error('반려 처리 실패:', error)
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || '반려 처리에 실패했습니다.'
+    alert(errorMessage)
+  } finally {
+    isSubmitting.value = false
+    closeRejectModal()
   }
 }
 
@@ -938,5 +1198,123 @@ const submitRentalApplication = async () => {
   .department-select-group {
     flex-direction: column;
   }
+}
+
+/* 결재 모드 스타일 */
+.approval-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.approval-actions .btn {
+  flex: 1;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-approve {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.btn-reject {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btn-download {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download:hover:not(:disabled) {
+  background-color: #0f1f88;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 반려 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+}
+
+.reject-reason-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 1.5rem;
+}
+
+.reject-reason-input:focus {
+  outline: none;
+  border-color: #17ccff;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
 }
 </style>
