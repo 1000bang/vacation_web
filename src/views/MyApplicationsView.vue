@@ -108,12 +108,9 @@
             <tbody>
               <template v-for="expense in expenseClaimList" :key="expense.seq">
                 <!-- 부모 행 -->
-                <tr 
-                  class="parent-row"
-                  :class="{ 'expanded': expandedExpenseClaims.includes(expense.seq) }"
-                >
-                  <td class="expand-icon" @click.stop="toggleExpenseDetail(expense.seq)">
-                    <span class="icon">{{ expandedExpenseClaims.includes(expense.seq) ? '▼' : '▶' }}</span>
+                <tr class="parent-row">
+                  <td class="expand-icon" @click.stop="openExpenseDetailModal(expense.seq)">
+                    <span class="icon">▶</span>
                   </td>
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatDate(expense.requestDate) }}</td>
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatBillingYyMonth(expense.billingYyMonth) }}</td>
@@ -141,37 +138,6 @@
                       >
                         {{ isDeleting === expense.seq ? '삭제 중...' : '삭제' }}
                       </button>
-                    </div>
-                  </td>
-                </tr>
-                <!-- 자식 행들 (펼쳐질 때만 표시) -->
-                <tr v-if="expandedExpenseClaims.includes(expense.seq)" class="child-row">
-                  <td colspan="7">
-                    <div class="expense-detail-container">
-                      <table class="expense-detail-table">
-                        <thead>
-                          <tr>
-                            <th>일자</th>
-                            <th>사용 내역</th>
-                            <th>거래처</th>
-                            <th>결재방법</th>
-                            <th>프로젝트</th>
-                            <th>금액</th>
-                            <th>비고</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-for="sub in expenseDetailMap[expense.seq]?.expenseSubList || []" :key="sub.seq">
-                            <td>{{ formatDate(sub.date) }}</td>
-                            <td>{{ sub.usageDetail || '-' }}</td>
-                            <td>{{ sub.vendor || '-' }}</td>
-                            <td>{{ sub.paymentMethod || '-' }}</td>
-                            <td>{{ sub.project || '-' }}</td>
-                            <td>{{ formatNumber(sub.amount) }}원</td>
-                            <td>{{ sub.note || '-' }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
                     </div>
                   </td>
                 </tr>
@@ -331,6 +297,49 @@
         </div>
       </div>
     </div>
+
+    <!-- 개인 비용 상세 모달 -->
+    <div v-if="showExpenseDetailModal" class="modal-overlay" @click="closeExpenseDetailModal">
+      <div class="modal-content expense-detail-modal" @click.stop>
+        <div class="modal-header">
+          <h2>개인 비용 상세 내역</h2>
+          <button class="modal-close-btn" @click="closeExpenseDetailModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="selectedExpenseDetail" class="expense-detail-container">
+            <table class="expense-detail-table">
+              <thead>
+                <tr>
+                  <th>일자</th>
+                  <th>사용 내역</th>
+                  <th>거래처</th>
+                  <th>결재방법</th>
+                  <th>프로젝트</th>
+                  <th>금액</th>
+                  <th>비고</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sub in selectedExpenseDetail.expenseSubList || []" :key="sub.seq">
+                  <td>{{ formatDate(sub.date) }}</td>
+                  <td>{{ sub.usageDetail || '-' }}</td>
+                  <td>{{ sub.vendor || '-' }}</td>
+                  <td>{{ sub.paymentMethod || '-' }}</td>
+                  <td>{{ sub.project || '-' }}</td>
+                  <td>{{ formatNumber(sub.amount) }}원</td>
+                  <td>{{ sub.note || '-' }}</td>
+                </tr>
+                <tr v-if="!selectedExpenseDetail.expenseSubList || selectedExpenseDetail.expenseSubList.length === 0">
+                  <td colspan="7" style="text-align: center; padding: 2rem; color: #999;">
+                    상세 내역이 없습니다.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -388,7 +397,8 @@ const showRentalPagination = computed(() => rentalTotalCount.value >= itemsPerPa
 
 const rentalSupportList = ref<RentalSupport[]>([])
 const expenseDetailMap = ref<Record<number, ExpenseClaimDetail & { totalAmount: number }>>({})
-const expandedExpenseClaims = ref<number[]>([])
+const showExpenseDetailModal = ref(false)
+const selectedExpenseDetail = ref<(ExpenseClaimDetail & { totalAmount: number }) | null>(null)
 const isDownloading = ref<number | null>(null)
 const isDeleting = ref<number | null>(null)
 
@@ -598,34 +608,35 @@ const handleEditExpenseClaim = (seq: number) => {
   router.push(`/expense-application/${seq}`)
 }
 
-// 개인 비용 상세 정보 토글
-const toggleExpenseDetail = async (seq: number) => {
-  const index = expandedExpenseClaims.value.indexOf(seq)
-  
-  if (index > -1) {
-    // 이미 펼쳐져 있으면 닫기
-    expandedExpenseClaims.value.splice(index, 1)
-  } else {
-    // 펼치기
-    expandedExpenseClaims.value.push(seq)
-    
-    // 상세 정보가 없으면 로드
-    if (!expenseDetailMap.value[seq]) {
-      try {
-        const response = await getExpenseClaim(seq)
-        const detail = response.resultMsg
-        if (detail) {
-          const totalAmount = detail.expenseSubList.reduce((sum, sub) => sum + (sub.amount || 0), 0)
-          expenseDetailMap.value[seq] = {
-            ...detail,
-            totalAmount
-          }
+// 개인 비용 상세 정보 모달 열기
+const openExpenseDetailModal = async (seq: number) => {
+  // 상세 정보가 없으면 로드
+  if (!expenseDetailMap.value[seq]) {
+    try {
+      const response = await getExpenseClaim(seq)
+      const detail = response.resultMsg
+      if (detail) {
+        const totalAmount = detail.expenseSubList.reduce((sum, sub) => sum + (sub.amount || 0), 0)
+        expenseDetailMap.value[seq] = {
+          ...detail,
+          totalAmount
         }
-      } catch (error) {
-        console.error('개인 비용 상세 정보 조회 실패:', error)
       }
+    } catch (error) {
+      console.error('개인 비용 상세 정보 조회 실패:', error)
+      alert('상세 정보를 불러오는데 실패했습니다.')
+      return
     }
   }
+  
+  selectedExpenseDetail.value = expenseDetailMap.value[seq]
+  showExpenseDetailModal.value = true
+}
+
+// 개인 비용 상세 정보 모달 닫기
+const closeExpenseDetailModal = () => {
+  showExpenseDetailModal.value = false
+  selectedExpenseDetail.value = null
 }
 
 // 개인 비용 청구서 다운로드
@@ -730,10 +741,6 @@ const handleDeleteExpenseClaim = async (seq: number) => {
     }
     // 상세 정보 맵에서도 제거
     delete expenseDetailMap.value[seq]
-    const index = expandedExpenseClaims.value.indexOf(seq)
-    if (index > -1) {
-      expandedExpenseClaims.value.splice(index, 1)
-    }
   } catch (error: any) {
     console.error('삭제 실패:', error)
     const errorCode = error.response?.data?.resultMsg?.errorCode
@@ -1068,6 +1075,10 @@ onMounted(async () => {
 .child-row td {
   padding: 0;
   border-top: none;
+  width: 100%;
+  position: relative;
+  left: 0;
+  right: 0;
 }
 
 .expense-detail-container {
@@ -1076,12 +1087,15 @@ onMounted(async () => {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
+  overflow-x: auto;
+  display: block;
 }
 
 .expense-detail-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: auto;
 }
 
 .expense-detail-table thead {
@@ -1095,6 +1109,9 @@ onMounted(async () => {
   color: #555;
   border-bottom: 1px solid #e0e0e0;
   font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .expense-detail-table td {
@@ -1288,6 +1305,72 @@ onMounted(async () => {
     background-color: #dc3545 !important;
     color: white !important;
   }
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.expense-detail-modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1226aa;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #1226aa;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.expense-detail-modal .expense-detail-container {
+  padding: 0;
+  margin: 0;
+  width: 100%;
 }
 </style>
 
