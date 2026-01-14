@@ -984,15 +984,42 @@ const handleLogout = () => {
 
 @media (max-width: 600px) {
   .alarm-modal-content {
-    width: calc(100vw - 2rem);
-    max-width: calc(100vw - 2rem);
-    right: -1rem;
-    max-height: 60vh;
+    position: fixed;
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+    right: 0.5rem;
+    top: 70px; /* 헤더 높이를 고려한 위치 */
+    max-height: calc(100vh - 80px); /* 화면 높이에서 헤더와 여백 제외 */
+    transform: none;
   }
   
   .alarm-icon {
     width: 1.2rem;
     height: 1.2rem;
+  }
+
+  .alarm-modal-header {
+    padding: 0.75rem;
+  }
+
+  .alarm-modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .alarm-list {
+    max-height: calc(70vh - 80px);
+  }
+
+  .alarm-item {
+    padding: 0.75rem;
+  }
+
+  .alarm-message {
+    font-size: 0.9rem;
+  }
+
+  .alarm-date {
+    font-size: 0.8rem;
   }
   
   .alarm-badge {

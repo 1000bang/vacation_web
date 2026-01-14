@@ -842,30 +842,6 @@ const handleApprove = async () => {
   }
 }
 
-// 월세 지원 신청서 다운로드
-const handleDownloadRentalApplication = async () => {
-  if (!rentalSeq.value) return
-  
-  isDownloading.value = true
-  try {
-    const applicant = user.value?.name || ''
-    const { blob, filename } = await downloadRentalSupportApplication(rentalSeq.value, applicant)
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-  } catch (error) {
-    console.error('다운로드 실패:', error)
-    alert('다운로드에 실패했습니다.')
-  } finally {
-    isDownloading.value = false
-  }
-}
-
 // 반려 처리
 const handleReject = () => {
   if (!canReject.value) return

@@ -154,6 +154,12 @@
           </div>
           <div class="rental-details">
             <div class="detail-row">
+              <span class="detail-label">승인상태:</span>
+              <span :class="getApprovalStatusClass(rental.approvalStatus)">
+                {{ getApprovalStatusName(rental.approvalStatus) }}
+              </span>
+            </div>
+            <div class="detail-row">
               <span class="detail-label">기존 거주지 주소:</span>
               <span>{{ rental.previousAddress || '-' }}</span>
             </div>
@@ -718,6 +724,37 @@ const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleDateString('ko-KR')
+}
+
+// 승인 상태명 반환
+const getApprovalStatusName = (status: string | undefined | null): string => {
+  // null이면 "A"로 간주 (초기 생성 상태)
+  const actualStatus = status || 'A'
+  const statusMap: Record<string, string> = {
+    'A': '요청',
+    'AM': '수정후 재요청',
+    'B': '팀장 승인',
+    'RB': '팀장 반려',
+    'C': '본부장 승인',
+    'RC': '본부장 반려'
+  }
+  return statusMap[actualStatus] || actualStatus
+}
+
+// 승인 상태에 따른 CSS 클래스 반환
+const getApprovalStatusClass = (status: string | undefined | null): string => {
+  // null이면 "A"로 간주 (초기 생성 상태)
+  const actualStatus = status || 'A'
+  // 반려 상태만 빨간색
+  if (actualStatus === 'RB' || actualStatus === 'RC') {
+    return 'status-rejected'
+  }
+  // 최종 승인 상태만 초록색
+  if (actualStatus === 'C') {
+    return 'status-final-approved'
+  }
+  // 나머지는 기본 색상
+  return 'status-default'
 }
 
 const formatCurrency = (amount: number) => {
@@ -1287,6 +1324,22 @@ const calculatedRemainingDays = computed(() => {
   .rental-actions .btn {
     width: 100%;
   }
+}
+
+/* 승인 상태 스타일 */
+.status-rejected {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.status-final-approved {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.status-default {
+  color: #666;
+  font-weight: 500;
 }
 </style>
 

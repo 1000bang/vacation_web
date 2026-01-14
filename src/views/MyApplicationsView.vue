@@ -261,6 +261,7 @@
             v-for="rental in rentalSupportList"
             :key="rental.seq"
             class="application-item"
+            @click="editRentalProposal(rental)"
           >
             <div class="application-info">
               <div class="info-row">
@@ -282,6 +283,12 @@
               <div class="info-row">
                 <span class="label">청구 개시일:</span>
                 <span class="value">{{ formatDate(rental.billingStartDate) }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">승인상태:</span>
+                <span :class="getApprovalStatusClass(rental.approvalStatus)">
+                  {{ getApprovalStatusName(rental.approvalStatus) }}
+                </span>
               </div>
             </div>
             <div class="application-actions">
@@ -340,6 +347,101 @@
         </div>
       </div>
     </div>
+
+    <!-- 월세 지원 품의 수정 모달 -->
+    <div v-if="showRentalProposalModal" class="modal-overlay" @click="closeRentalProposalForm">
+      <div class="modal-content rental-proposal-modal" @click.stop>
+        <div class="modal-header">
+          <h3>월세 지원 품의 수정</h3>
+          <button @click="closeRentalProposalForm" class="btn-close">×</button>
+        </div>
+        <form @submit.prevent="saveRentalProposal" class="rental-form">
+          <div class="form-group">
+            <label>기존 거주지 주소</label>
+            <input type="text" v-model="rentalProposalForm.previousAddress" />
+          </div>
+
+          <div class="form-group">
+            <label>월세 계약 주소 <span class="required">*</span></label>
+            <input type="text" v-model="rentalProposalForm.rentalAddress" required />
+          </div>
+
+          <div class="form-group">
+            <label>월세 계약 시작일 <span class="required">*</span></label>
+            <input type="date" v-model="rentalProposalForm.contractStartDate" required />
+          </div>
+
+          <div v-if="rentalProposalForm.contractStartDate" class="form-group">
+            <label>계약 단위 <span class="required">*</span></label>
+            <select v-model="rentalProposalForm.contractTermUnit" required class="form-select">
+              <option value="">선택</option>
+              <option value="1년">1년</option>
+              <option value="2년">2년</option>
+              <option value="직접입력">직접입력</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>월세 계약 종료일 <span class="required">*</span></label>
+            <input
+              type="date"
+              v-model="rentalProposalForm.contractEndDate"
+              :disabled="rentalProposalForm.contractTermUnit !== '직접입력' && rentalProposalForm.contractTermUnit !== ''"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label>계약 월세 금액(원) <span class="required">*</span></label>
+            <div class="input-with-unit">
+              <input
+                type="text"
+                v-model="rentalProposalForm.contractMonthlyRent"
+                @input="handleRentalNumberInput($event, 'contractMonthlyRent')"
+                @keypress="handleKeyPress"
+                required
+              />
+              <div v-if="rentalProposalForm.contractMonthlyRent >= 10000" class="unit-text-below">
+                {{ formatKoreanWon(rentalProposalForm.contractMonthlyRent) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>월세 청구 금액(원) <span class="required">*</span></label>
+            <div class="input-with-unit">
+              <input
+                type="text"
+                v-model="rentalProposalForm.billingAmount"
+                @input="handleRentalNumberInput($event, 'billingAmount')"
+                @keypress="handleKeyPress"
+                required
+              />
+              <div v-if="rentalProposalForm.billingAmount >= 10000" class="unit-text-below">
+                {{ formatKoreanWon(rentalProposalForm.billingAmount) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>월세 청구 개시일 <span class="required">*</span></label>
+            <input type="date" v-model="rentalProposalForm.billingStartDate" required />
+          </div>
+
+          <div class="form-group">
+            <label>월세 청구 사유</label>
+            <textarea v-model="rentalProposalForm.billingReason" rows="3"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" @click="closeRentalProposalForm" class="btn btn-cancel">취소</button>
+            <button type="submit" class="btn btn-save" :disabled="isSavingRentalProposal">
+              {{ isSavingRentalProposal ? '수정 중...' : '수정' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -357,6 +459,7 @@ import {
   downloadExpenseClaim,
   downloadRentalSupportApplication,
   downloadRentalProposal,
+  updateRentalSupport,
   type RentalSupport,
   type ExpenseClaim,
   type ExpenseClaimDetail
@@ -401,6 +504,22 @@ const showExpenseDetailModal = ref(false)
 const selectedExpenseDetail = ref<(ExpenseClaimDetail & { totalAmount: number }) | null>(null)
 const isDownloading = ref<number | null>(null)
 const isDeleting = ref<number | null>(null)
+
+// 월세 지원 품의 수정 모달 관련
+const showRentalProposalModal = ref(false)
+const editingRentalProposal = ref<RentalSupport | null>(null)
+const isSavingRentalProposal = ref(false)
+const rentalProposalForm = ref({
+  previousAddress: '',
+  rentalAddress: '',
+  contractStartDate: '',
+  contractTermUnit: '', // 1년, 2년, 직접입력
+  contractEndDate: '',
+  contractMonthlyRent: 0,
+  billingAmount: 0,
+  billingStartDate: '',
+  billingReason: ''
+})
 
 // 데이터 로드 함수
 const loadVacationHistory = async (page: number = 0) => {
@@ -661,6 +780,197 @@ const handleDownloadExpenseClaim = async (seq: number) => {
     alert('다운로드에 실패했습니다.')
   } finally {
     isDownloading.value = null
+  }
+}
+
+// 월세 지원 품의 수정 모달 열기
+const editRentalProposal = (rental: RentalSupport) => {
+  editingRentalProposal.value = rental
+  rentalProposalForm.value = {
+    previousAddress: rental.previousAddress || '',
+    rentalAddress: rental.rentalAddress || '',
+    contractStartDate: rental.contractStartDate,
+    contractTermUnit: calculateContractTermUnit(rental.contractStartDate, rental.contractEndDate),
+    contractEndDate: rental.contractEndDate,
+    contractMonthlyRent: rental.contractMonthlyRent,
+    billingAmount: rental.billingAmount,
+    billingStartDate: rental.billingStartDate,
+    billingReason: rental.billingReason || ''
+  }
+  showRentalProposalModal.value = true
+}
+
+// 계약 기간으로 계약 단위 계산
+const calculateContractTermUnit = (startDate: string, endDate: string): string => {
+  if (!startDate || !endDate) return ''
+  
+  try {
+    const start = new Date(startDate + 'T00:00:00')
+    const end = new Date(endDate + 'T00:00:00')
+    
+    // 정확히 1년인지 확인 (시작일과 종료일이 정확히 1년 차이)
+    const startNextYear = new Date(start)
+    startNextYear.setFullYear(start.getFullYear() + 1)
+    startNextYear.setDate(startNextYear.getDate() - 1) // 1년 후 - 1일
+    
+    if (startNextYear.toDateString() === end.toDateString()) {
+      return '1년'
+    }
+    
+    // 정확히 2년인지 확인
+    const startTwoYears = new Date(start)
+    startTwoYears.setFullYear(start.getFullYear() + 2)
+    startTwoYears.setDate(startTwoYears.getDate() - 1) // 2년 후 - 1일
+    
+    if (startTwoYears.toDateString() === end.toDateString()) {
+      return '2년'
+    }
+    
+    // 그 외는 직접입력
+    return '직접입력'
+  } catch (error) {
+    console.error('계약 단위 계산 오류:', error)
+    return '직접입력'
+  }
+}
+
+// 숫자 입력 처리 (천 단위 콤마 제거)
+const handleRentalNumberInput = (event: Event, field: 'contractMonthlyRent' | 'billingAmount') => {
+  const target = event.target as HTMLInputElement
+  const value = target.value.replace(/,/g, '')
+  const numValue = parseInt(value) || 0
+  
+  if (field === 'contractMonthlyRent') {
+    rentalProposalForm.value.contractMonthlyRent = numValue
+    // 계약 월세 금액이 변경되면 청구 금액 자동 계산
+    if (numValue > 0) {
+      // 50만원 초과면 최대 25만원, 그 외는 50%
+      if (numValue > 500000) {
+        rentalProposalForm.value.billingAmount = 250000
+      } else {
+        rentalProposalForm.value.billingAmount = Math.floor(numValue / 2)
+      }
+    }
+    target.value = value || ''
+  } else if (field === 'billingAmount') {
+    rentalProposalForm.value.billingAmount = numValue
+    target.value = value || ''
+  }
+}
+
+// 숫자만 입력 허용
+const handleKeyPress = (event: KeyboardEvent) => {
+  const char = String.fromCharCode(event.which)
+  if (!/[0-9]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+// 한국 원화 형식으로 변환
+const formatKoreanWon = (amount: number): string => {
+  if (!amount || amount < 10000) return ''
+  
+  const man = Math.floor(amount / 10000)
+  const remainder = amount % 10000
+  
+  if (remainder === 0) {
+    return `${man}만원`
+  } else {
+    return `${man}만 ${remainder.toLocaleString()}원`
+  }
+}
+
+// 월세 지원 품의 저장
+const saveRentalProposal = async () => {
+  if (!editingRentalProposal.value) return
+  
+  isSavingRentalProposal.value = true
+  try {
+    const request: any = {
+      previousAddress: rentalProposalForm.value.previousAddress || undefined,
+      rentalAddress: rentalProposalForm.value.rentalAddress,
+      contractStartDate: rentalProposalForm.value.contractStartDate,
+      contractEndDate: rentalProposalForm.value.contractEndDate,
+      contractMonthlyRent: rentalProposalForm.value.contractMonthlyRent,
+      billingAmount: rentalProposalForm.value.billingAmount,
+      billingStartDate: rentalProposalForm.value.billingStartDate,
+      billingReason: rentalProposalForm.value.billingReason || undefined
+    }
+    
+    await updateRentalSupport(editingRentalProposal.value.seq, request)
+    alert('수정되었습니다.')
+    closeRentalProposalForm()
+    await loadRentalSupportList()
+  } catch (error) {
+    console.error('월세 지원 품의 수정 실패:', error)
+    alert('수정에 실패했습니다.')
+  } finally {
+    isSavingRentalProposal.value = false
+  }
+}
+
+// 월세 지원 품의 모달 닫기
+const closeRentalProposalForm = () => {
+  showRentalProposalModal.value = false
+  editingRentalProposal.value = null
+  rentalProposalForm.value = {
+    previousAddress: '',
+    rentalAddress: '',
+    contractStartDate: '',
+    contractTermUnit: '',
+    contractEndDate: '',
+    contractMonthlyRent: 0,
+    billingAmount: 0,
+    billingStartDate: '',
+    billingReason: ''
+  }
+}
+
+// 계약 월세 금액이 변경될 때 자동 계산
+watch(() => rentalProposalForm.value.contractMonthlyRent, (newValue) => {
+  if (newValue && newValue > 0) {
+    // 월세 청구 금액 계산
+    // 50만원 초과면 최대 25만원, 그 외는 50%
+    if (newValue > 500000) {
+      rentalProposalForm.value.billingAmount = 250000
+    } else {
+      rentalProposalForm.value.billingAmount = Math.floor(newValue / 2)
+    }
+  }
+})
+
+// 계약 시작일이 변경될 때 청구 개시일 자동 설정
+watch(() => rentalProposalForm.value.contractStartDate, (newValue) => {
+  if (newValue) {
+    rentalProposalForm.value.billingStartDate = newValue
+  }
+})
+
+// 계약 시작일과 계약 단위가 변경될 때 종료일 자동 계산
+watch([() => rentalProposalForm.value.contractStartDate, () => rentalProposalForm.value.contractTermUnit], ([startDate, termUnit]) => {
+  if (startDate && termUnit && termUnit !== '직접입력') {
+    const start = new Date(startDate + 'T00:00:00')
+    const years = termUnit === '1년' ? 1 : 2
+    const end = new Date(start)
+    end.setFullYear(start.getFullYear() + years)
+    end.setDate(end.getDate() - 1) // 종료일은 시작일 + N년 - 1일
+    
+    const year = end.getFullYear()
+    const month = String(end.getMonth() + 1).padStart(2, '0')
+    const day = String(end.getDate()).padStart(2, '0')
+    rentalProposalForm.value.contractEndDate = `${year}-${month}-${day}`
+  } else if (termUnit === '직접입력') {
+    // 직접입력으로 변경되면 종료일은 그대로 유지 (사용자가 입력)
+  }
+})
+
+// 월세 지원 품의 목록 로드
+const loadRentalSupportList = async () => {
+  try {
+    const rentalResponse = await getRentalSupportList()
+    rentalSupportList.value = rentalResponse.resultMsg || []
+  } catch (error) {
+    console.error('월세 지원 품의 목록 조회 실패:', error)
   }
 }
 
@@ -1371,6 +1681,138 @@ onMounted(async () => {
   padding: 0;
   margin: 0;
   width: 100%;
+}
+
+/* 월세 지원 품의 수정 모달 스타일 */
+.rental-proposal-modal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.rental-proposal-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.rental-proposal-modal .modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1226aa;
+}
+
+.rental-proposal-modal .btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.rental-proposal-modal .btn-close:hover {
+  color: #1226aa;
+}
+
+.rental-proposal-modal .rental-form {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.rental-proposal-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.rental-proposal-modal .form-group label {
+  font-weight: 500;
+  color: #555;
+}
+
+.rental-proposal-modal .form-group .required {
+  color: #dc3545;
+}
+
+.rental-proposal-modal .form-group input,
+.rental-proposal-modal .form-group select,
+.rental-proposal-modal .form-group textarea {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.rental-proposal-modal .form-group input:focus,
+.rental-proposal-modal .form-group select:focus,
+.rental-proposal-modal .form-group textarea:focus {
+  outline: none;
+  border-color: #1226aa;
+}
+
+.rental-proposal-modal .form-group input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rental-proposal-modal .form-select {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.rental-proposal-modal .input-with-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rental-proposal-modal .unit-text-below {
+  font-size: 0.85rem;
+  color: #666;
+  padding-left: 0.5rem;
+}
+
+.rental-proposal-modal .form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.rental-proposal-modal .btn-save {
+  background-color: #1226aa;
+  color: white;
+}
+
+.rental-proposal-modal .btn-save:hover:not(:disabled) {
+  background-color: #0f1f88;
+}
+
+.rental-proposal-modal .btn-cancel {
+  background-color: #999;
+  color: white;
+}
+
+.rental-proposal-modal .btn-cancel:hover {
+  background-color: #777;
 }
 </style>
 
