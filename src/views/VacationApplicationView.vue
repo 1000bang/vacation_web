@@ -140,6 +140,62 @@
             <textarea v-model="vacationForm.reason" rows="3" :disabled="isApprovalMode"></textarea>
           </div>
 
+          <!-- 첨부파일 -->
+          <div class="form-group">
+            <label>첨부파일</label>
+            <div class="file-upload-section">
+              <!-- 파일 선택 input -->
+              <div v-if="!isApprovalMode" class="file-input-wrapper">
+                <input
+                  type="file"
+                  ref="fileInput"
+                  @change="handleFileSelect"
+                  accept=".png,.jpg,.jpeg,.pdf"
+                  class="file-input"
+                  id="vacation-file-input"
+                />
+                <label for="vacation-file-input" class="file-input-label">
+                  <span class="file-input-text">파일 선택 (PNG, JPG, PDF, 최대 10MB)</span>
+                </label>
+              </div>
+              
+              <!-- 선택된 파일 표시 -->
+              <div v-if="selectedFile" class="selected-file">
+                <span class="file-name">{{ selectedFile.name }}</span>
+                <span class="file-size">({{ formatFileSize(selectedFile.size) }})</span>
+                <button 
+                  v-if="!isApprovalMode" 
+                  type="button" 
+                  @click="removeSelectedFile" 
+                  class="btn-remove-file"
+                >
+                  삭제
+                </button>
+              </div>
+              
+              <!-- 기존 첨부파일 표시 -->
+              <div v-if="existingAttachment && !selectedFile" class="existing-file">
+                <span class="file-name">{{ existingAttachment.fileName }}</span>
+                <span class="file-size">({{ formatFileSize(existingAttachment.fileSize) }})</span>
+                <button 
+                  type="button" 
+                  @click="downloadAttachment" 
+                  class="btn-download-file"
+                >
+                  다운로드
+                </button>
+                <button 
+                  v-if="!isApprovalMode" 
+                  type="button" 
+                  @click="removeExistingFile" 
+                  class="btn-remove-file"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- 반려 상태일 때 반려 사유 표시 -->
           <div v-if="(currentVacation?.approvalStatus === 'RB' || currentVacation?.approvalStatus === 'RC') && rejectionReasonFromServer" class="form-group rejection-reason-group">
             <label class="rejection-label">반려 사유</label>
@@ -214,13 +270,14 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getUserVacationInfo, type UserVacationInfoResponse } from '@/api/user'
-import { createVacation, updateVacation, getVacationHistory, downloadVacationDocument, type VacationRequest, type VacationHistory } from '@/api/vacation'
+import { getVacationHistory, downloadVacationDocument, type VacationRequest, type VacationHistory } from '@/api/vacation'
 import { 
   approveVacationByTeamLeader, 
   rejectVacationByTeamLeader, 
   approveVacationByDivisionHead, 
   rejectVacationByDivisionHead 
 } from '@/api/user'
+import apiClient from '@/api/axios'
 
 const router = useRouter()
 const route = useRoute()
@@ -269,6 +326,9 @@ const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const rejectionReasonFromServer = ref<string | null>(null)
 const isDataLoaded = ref(false) // 초기 데이터 로드 완료 여부
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const existingAttachment = ref<{ seq: number; fileName: string; fileSize: number } | null>(null)
 
 // 신청일자보다 이전 날짜를 비활성화하기 위한 최소 날짜 계산
 const minStartDate = computed(() => {
@@ -437,6 +497,17 @@ const loadVacationData = async (seq: number) => {
       // API 응답이 객체인 경우 (vacationHistory와 rejectionReason 포함)
       const vacation = result.vacationHistory || result
       
+      // 첨부파일 정보 저장
+      if (result.attachment) {
+        existingAttachment.value = {
+          seq: result.attachment.seq,
+          fileName: result.attachment.fileName,
+          fileSize: result.attachment.fileSize
+        }
+      } else {
+        existingAttachment.value = null
+      }
+      
       // 수정 모드에서 표시할 연차 정보 저장
       currentVacation.value = vacation
       
@@ -569,6 +640,83 @@ const handleApprove = async () => {
   }
 }
 
+// 파일 선택 처리
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 파일 크기 검증 (10MB)
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    alert('파일 크기는 10MB를 초과할 수 없습니다.')
+    target.value = ''
+    return
+  }
+  
+  // 파일 확장자 검증
+  const allowedExtensions = ['.png', '.jpg', '.jpeg', '.pdf']
+  const fileName = file.name.toLowerCase()
+  const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+  
+  if (!isValidExtension) {
+    alert('PNG, JPG, PDF 파일만 업로드 가능합니다.')
+    target.value = ''
+    return
+  }
+  
+  selectedFile.value = file
+  // 새 파일 선택 시 기존 첨부파일 정보 제거
+  existingAttachment.value = null
+}
+
+// 선택된 파일 제거
+const removeSelectedFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// 기존 파일 제거
+const removeExistingFile = () => {
+  existingAttachment.value = null
+}
+
+// 파일 크기 포맷팅
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 첨부파일 다운로드
+const downloadAttachment = async () => {
+  if (!vacationSeq.value || !existingAttachment.value) return
+  
+  try {
+    const response = await apiClient.get(`/vacation/history/${vacationSeq.value}/attachment`, {
+      responseType: 'blob'
+    })
+    
+    const blob = new Blob([response.data])
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = existingAttachment.value.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('첨부파일 다운로드 실패:', error)
+    alert('첨부파일 다운로드에 실패했습니다.')
+  }
+}
+
 // 휴가 신청서 다운로드
 const handleDownloadVacation = async () => {
   if (!vacationSeq.value) return
@@ -655,26 +803,50 @@ const submitVacationApplication = async () => {
       startDate: vacationForm.value.startDate,
       endDate: vacationForm.value.endDate,
       vacationType: vacationForm.value.vacationType,
-      requestedVacationDays: vacationForm.value.requestedVacationDays,
+      period: vacationForm.value.requestedVacationDays,
       reason: vacationForm.value.reason || ''
-      // 연차 정보는 disabled 처리되어 수정 불가하므로 백엔드에서 자동 계산하도록 함
+    }
+    
+    // 수정 모드용 연차 정보 추가
+    if (isEditMode.value) {
+      request.annualVacationDays = vacationForm.value.annualVacationDays
+      request.previousRemainingDays = vacationForm.value.previousRemainingDays
+      request.remainingVacationDays = vacationForm.value.remainingVacationDays
+    }
+    
+    // FormData 생성
+    const formData = new FormData()
+    const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' })
+    formData.append('vacationRequest', jsonBlob, 'vacationRequest.json')
+    
+    // 파일이 있으면 추가
+    if (selectedFile.value) {
+      formData.append('file', selectedFile.value)
     }
     
     if (isEditMode.value && vacationSeq.value) {
       // 수정 모드
-      await updateVacation(vacationSeq.value, request)
+      await apiClient.put(`/vacation/${vacationSeq.value}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       alert('수정되었습니다.')
       router.push('/my-applications')
     } else {
       // 신청 모드
-      const response = await createVacation(request)
+      const response = await apiClient.post('/vacation', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
-      if (response.resultMsg && response.resultMsg.seq) {
+      if (response.data.resultMsg && response.data.resultMsg.seq) {
         router.push({
           path: '/application-success',
           query: {
             type: 'vacation',
-            seq: response.resultMsg.seq
+            seq: response.data.resultMsg.seq
           }
         })
       } else {
@@ -683,7 +855,12 @@ const submitVacationApplication = async () => {
     }
   } catch (error: any) {
     console.error(isEditMode.value ? '휴가 수정 실패:' : '휴가 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '휴가 수정에 실패했습니다.' : '휴가 신청에 실패했습니다.')
+    // BaseController를 통한 에러 응답: error.response.data.resultMsg.errorMessage
+    // GlobalExceptionHandler를 통한 에러 응답: error.response.data.errorMessage
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || 
+                        error.response?.data?.errorMessage || 
+                        error.message || 
+                        (isEditMode.value ? '휴가 수정에 실패했습니다.' : '휴가 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false
@@ -1155,6 +1332,101 @@ const submitVacationApplication = async () => {
 
 .btn-cancel:hover {
   background-color: #5a6268;
+}
+
+/* 파일 업로드 스타일 */
+.file-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #f8f9fa;
+  border: 2px dashed #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.file-input-label:hover {
+  background-color: #e9ecef;
+  border-color: #1226aa;
+}
+
+.file-input-text {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.selected-file,
+.existing-file {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.file-name {
+  flex: 1;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #666;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.btn-download-file,
+.btn-remove-file {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.btn-download-file {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download-file:hover {
+  background-color: #0f1f8a;
+}
+
+.btn-remove-file {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-remove-file:hover {
+  background-color: #c82333;
 }
 </style>
 

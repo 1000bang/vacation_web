@@ -322,6 +322,60 @@
               <textarea v-model="rentalForm.billingReason" rows="3"></textarea>
             </div>
 
+            <!-- 첨부파일 -->
+            <div class="form-group">
+              <label>첨부파일</label>
+              <div class="file-upload-section">
+                <!-- 파일 선택 input -->
+                <div class="file-input-wrapper">
+                  <input
+                    type="file"
+                    ref="fileInput"
+                    @change="handleFileSelect"
+                    accept=".png,.jpg,.jpeg,.pdf"
+                    class="file-input"
+                    id="rental-proposal-file-input"
+                  />
+                  <label for="rental-proposal-file-input" class="file-input-label">
+                    <span class="file-input-text">파일 선택 (PNG, JPG, PDF, 최대 10MB)</span>
+                  </label>
+                </div>
+                
+                <!-- 선택된 파일 표시 -->
+                <div v-if="selectedFile" class="selected-file">
+                  <span class="file-name">{{ selectedFile.name }}</span>
+                  <span class="file-size">({{ formatFileSize(selectedFile.size) }})</span>
+                  <button 
+                    type="button" 
+                    @click="removeSelectedFile" 
+                    class="btn-remove-file"
+                  >
+                    삭제
+                  </button>
+                </div>
+                
+                <!-- 기존 첨부파일 표시 -->
+                <div v-if="existingAttachment && !selectedFile" class="existing-file">
+                  <span class="file-name">{{ existingAttachment.fileName }}</span>
+                  <span class="file-size">({{ formatFileSize(existingAttachment.fileSize) }})</span>
+                  <button 
+                    type="button" 
+                    @click="downloadAttachment" 
+                    class="btn-download-file"
+                  >
+                    다운로드
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="removeExistingFile" 
+                    class="btn-remove-file"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="form-actions">
               <button type="button" @click="closeRentalForm" class="btn btn-cancel">취소</button>
               <button type="submit" class="btn btn-save" :disabled="isSaving">
@@ -362,6 +416,7 @@ import HelpModal from '@/components/HelpModal.vue'
 import propPeriodImage from '@/assets/image/help/prop_period.png'
 import propAmountImage from '@/assets/image/help/prop_amount.png'
 import propBillingStartImage from '@/assets/image/help/prop_billingStart.png'
+import apiClient from '@/api/axios'
 
 const userInfo = ref<UserInfoResponse | null>(null)
 
@@ -369,6 +424,9 @@ const rentalSupportList = ref<RentalSupport[]>([])
 const showAddRentalForm = ref(false)
 const editingRental = ref<RentalSupport | null>(null)
 const isSaving = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const existingAttachment = ref<{ seq: number; fileName: string; fileSize: number } | null>(null)
 
 const vacationInfo = ref<UserVacationInfoResponse | null>(null)
 const isEditingVacation = ref(false)
@@ -488,7 +546,7 @@ const calculateContractTermUnit = (startDate: string, endDate: string): string =
   }
 }
 
-const editRental = (rental: RentalSupport) => {
+const editRental = async (rental: RentalSupport) => {
   editingRental.value = rental
   rentalForm.value = {
     requestDate: getTodayDate(), // 품의서에는 requestDate가 없으므로 오늘 날짜로 설정
@@ -502,6 +560,30 @@ const editRental = (rental: RentalSupport) => {
     billingStartDate: rental.billingStartDate,
     billingReason: rental.billingReason || ''
   }
+  
+  // 첨부파일 정보 로드
+  try {
+    const response = await apiClient.get(`/rental/${rental.seq}`)
+    const result = response.data.resultMsg
+    if (result && result.attachment) {
+      existingAttachment.value = {
+        seq: result.attachment.seq,
+        fileName: result.attachment.fileName,
+        fileSize: result.attachment.fileSize
+      }
+    } else {
+      existingAttachment.value = null
+    }
+  } catch (error) {
+    console.error('첨부파일 정보 조회 실패:', error)
+    existingAttachment.value = null
+  }
+  
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  
   showAddRentalForm.value = true
 }
 
@@ -671,6 +753,83 @@ watch([() => rentalForm.value.contractStartDate, () => rentalForm.value.contract
   }
 })
 
+// 파일 선택 처리
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 파일 크기 검증 (10MB)
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    alert('파일 크기는 10MB를 초과할 수 없습니다.')
+    target.value = ''
+    return
+  }
+  
+  // 파일 확장자 검증
+  const allowedExtensions = ['.png', '.jpg', '.jpeg', '.pdf']
+  const fileName = file.name.toLowerCase()
+  const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+  
+  if (!isValidExtension) {
+    alert('PNG, JPG, PDF 파일만 업로드 가능합니다.')
+    target.value = ''
+    return
+  }
+  
+  selectedFile.value = file
+  // 새 파일 선택 시 기존 첨부파일 정보 제거
+  existingAttachment.value = null
+}
+
+// 선택된 파일 제거
+const removeSelectedFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// 기존 파일 제거
+const removeExistingFile = () => {
+  existingAttachment.value = null
+}
+
+// 파일 크기 포맷팅
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 첨부파일 다운로드
+const downloadAttachment = async () => {
+  if (!editingRental.value || !existingAttachment.value) return
+  
+  try {
+    const response = await apiClient.get(`/rental/${editingRental.value.seq}/attachment`, {
+      responseType: 'blob'
+    })
+    
+    const blob = new Blob([response.data])
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = existingAttachment.value.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('첨부파일 다운로드 실패:', error)
+    alert('첨부파일 다운로드에 실패했습니다.')
+  }
+}
+
 const saveRentalSupport = async () => {
   isSaving.value = true
   try {
@@ -686,11 +845,29 @@ const saveRentalSupport = async () => {
       billingReason: rentalForm.value.billingReason || undefined
     }
     
+    // FormData 생성
+    const formData = new FormData()
+    const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' })
+    formData.append('rentalApprovalRequest', jsonBlob, 'rentalApprovalRequest.json')
+    
+    // 파일이 있으면 추가
+    if (selectedFile.value) {
+      formData.append('file', selectedFile.value)
+    }
+    
     if (editingRental.value) {
-      await updateRentalSupport(editingRental.value.seq, request)
+      await apiClient.put(`/rental/${editingRental.value.seq}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       alert('수정되었습니다.')
     } else {
-      await createRentalSupport(request)
+      const response = await apiClient.post('/rental', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       alert('추가되었습니다.')
     }
     closeRentalForm()
@@ -717,6 +894,11 @@ const closeRentalForm = () => {
     billingAmount: 0,
     billingStartDate: '',
     billingReason: ''
+  }
+  selectedFile.value = null
+  existingAttachment.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
   }
 }
 
@@ -1221,6 +1403,101 @@ const calculatedRemainingDays = computed(() => {
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+/* 파일 업로드 스타일 */
+.file-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #f8f9fa;
+  border: 2px dashed #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.file-input-label:hover {
+  background-color: #e9ecef;
+  border-color: #1226aa;
+}
+
+.file-input-text {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.selected-file,
+.existing-file {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.file-name {
+  flex: 1;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #666;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.btn-download-file,
+.btn-remove-file {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.btn-download-file {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download-file:hover {
+  background-color: #0f1f8a;
+}
+
+.btn-remove-file {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-remove-file:hover {
+  background-color: #c82333;
 }
 
 @media (max-width: 768px) {

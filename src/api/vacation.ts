@@ -6,7 +6,7 @@ export interface VacationRequest {
   startDate: string
   endDate: string
   vacationType: string
-  requestedVacationDays: number
+  period: number
   reason?: string
   // 수정 모드용 연차 정보 (선택적)
   annualVacationDays?: number
@@ -35,6 +35,11 @@ export interface VacationHistory {
 export interface VacationHistoryDetail {
   vacationHistory: VacationHistory
   rejectionReason?: string
+  attachment?: {
+    seq: number
+    fileName: string
+    fileSize: number
+  }
 }
 
 // API 응답 타입

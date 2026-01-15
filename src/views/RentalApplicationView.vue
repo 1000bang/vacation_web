@@ -191,6 +191,62 @@
             </div>
           </div>
 
+          <!-- 첨부파일 -->
+          <div class="form-group">
+            <label>첨부파일</label>
+            <div class="file-upload-section">
+              <!-- 파일 선택 input -->
+              <div v-if="!isApprovalMode" class="file-input-wrapper">
+                <input
+                  type="file"
+                  ref="fileInput"
+                  @change="handleFileSelect"
+                  accept=".png,.jpg,.jpeg,.pdf"
+                  class="file-input"
+                  id="rental-file-input"
+                />
+                <label for="rental-file-input" class="file-input-label">
+                  <span class="file-input-text">파일 선택 (PNG, JPG, PDF, 최대 10MB)</span>
+                </label>
+              </div>
+              
+              <!-- 선택된 파일 표시 -->
+              <div v-if="selectedFile" class="selected-file">
+                <span class="file-name">{{ selectedFile.name }}</span>
+                <span class="file-size">({{ formatFileSize(selectedFile.size) }})</span>
+                <button 
+                  v-if="!isApprovalMode" 
+                  type="button" 
+                  @click="removeSelectedFile" 
+                  class="btn-remove-file"
+                >
+                  삭제
+                </button>
+              </div>
+              
+              <!-- 기존 첨부파일 표시 -->
+              <div v-if="existingAttachment && !selectedFile" class="existing-file">
+                <span class="file-name">{{ existingAttachment.fileName }}</span>
+                <span class="file-size">({{ formatFileSize(existingAttachment.fileSize) }})</span>
+                <button 
+                  type="button" 
+                  @click="downloadAttachment" 
+                  class="btn-download-file"
+                >
+                  다운로드
+                </button>
+                <button 
+                  v-if="!isApprovalMode" 
+                  type="button" 
+                  @click="removeExistingFile" 
+                  class="btn-remove-file"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- 결재 모드일 때 승인/반려 버튼 표시 -->
           <div v-if="isApprovalMode" class="approval-actions">
             <!-- 최종 승인 상태(C)일 때는 다운로드 버튼 -->
@@ -266,7 +322,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { createRentalSupportApplication, updateRentalSupportApplication, getRentalSupportApplication, type RentalSupportRequest, getRentalSupportList } from '@/api/user'
+import { getRentalSupportApplication, type RentalSupportRequest, getRentalSupportList, downloadRentalSupportApplication } from '@/api/user'
 import { 
   approveRentalSupportByTeamLeader, 
   rejectRentalSupportByTeamLeader, 
@@ -274,6 +330,7 @@ import {
   rejectRentalSupportByDivisionHead 
 } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
+import apiClient from '@/api/axios'
 import rentalContPeriodImage from '@/assets/image/help/rental_cont_period.png'
 import rentalContractPriceImage from '@/assets/image/help/rental_contract_price.png'
 import rentalBillingStartDateImage from '@/assets/image/help/rental_billing_startdate.png'
@@ -350,10 +407,14 @@ const rentalForm = reactive({
 })
 
 const isSubmitting = ref(false)
-const user = ref<{ authVal: string } | null>(null)
+const isDownloading = ref(false)
+const user = ref<{ authVal: string; name?: string } | null>(null)
 const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const currentRentalSupport = ref<any>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const existingAttachment = ref<{ seq: number; fileName: string; fileSize: number } | null>(null)
 
 // 숫자를 한글 만원 단위로 변환
 const formatKoreanWon = (amount: number): string => {
@@ -709,10 +770,30 @@ onMounted(async () => {
 const loadRentalApplicationData = async (seq: number) => {
   try {
     const response = await getRentalSupportApplication(seq)
-    const rental = response.resultMsg
+    const result = response.resultMsg
     
-    if (rental) {
+    if (result) {
+      // API 응답이 객체인 경우 (rentalSupport와 attachment 포함)
+      const rental = (result as any).rentalSupport || result
       currentRentalSupport.value = rental
+      
+      // 첨부파일 정보 저장
+      console.log('첨부파일 정보 확인:', {
+        result: result,
+        resultAttachment: (result as any).attachment,
+        rental: rental
+      })
+      if ((result as any).attachment) {
+        existingAttachment.value = {
+          seq: (result as any).attachment.seq,
+          fileName: (result as any).attachment.fileName,
+          fileSize: (result as any).attachment.fileSize
+        }
+        console.log('첨부파일 정보 설정 완료:', existingAttachment.value)
+      } else {
+        existingAttachment.value = null
+        console.log('첨부파일 정보 없음')
+      }
       rentalForm.requestDate = rental.requestDate || getTodayDate()
       rentalForm.month = rental.billingYyMonth ? Math.floor(rental.billingYyMonth % 100) : null
       rentalForm.contractStartDate = rental.contractStartDate || ''
@@ -737,6 +818,12 @@ const loadRentalApplicationData = async (seq: number) => {
       rentalForm.paymentDate = rental.paymentDate || ''
       rentalForm.paymentAmount = rental.paymentAmount || 0
       rentalForm.billingAmount = rental.billingAmount || 0
+      
+      // 디버깅을 위한 로그
+      console.log('월세 지원 신청 첨부파일 정보:', {
+        resultAttachment: (result as any).attachment,
+        existingAttachment: existingAttachment.value
+      })
       
       // 디버깅을 위한 로그
       console.log('월세 지원 신청 데이터 로드:', {
@@ -854,6 +941,83 @@ const closeRejectModal = () => {
   rejectionReason.value = ''
 }
 
+// 파일 선택 처리
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  // 파일 크기 검증 (10MB)
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    alert('파일 크기는 10MB를 초과할 수 없습니다.')
+    target.value = ''
+    return
+  }
+  
+  // 파일 확장자 검증
+  const allowedExtensions = ['.png', '.jpg', '.jpeg', '.pdf']
+  const fileName = file.name.toLowerCase()
+  const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+  
+  if (!isValidExtension) {
+    alert('PNG, JPG, PDF 파일만 업로드 가능합니다.')
+    target.value = ''
+    return
+  }
+  
+  selectedFile.value = file
+  // 새 파일 선택 시 기존 첨부파일 정보 제거
+  existingAttachment.value = null
+}
+
+// 선택된 파일 제거
+const removeSelectedFile = () => {
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// 기존 파일 제거
+const removeExistingFile = () => {
+  existingAttachment.value = null
+}
+
+// 파일 크기 포맷팅
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 첨부파일 다운로드
+const downloadAttachment = async () => {
+  if (!rentalSeq.value || !existingAttachment.value) return
+  
+  try {
+    const response = await apiClient.get(`/rental/application/${rentalSeq.value}/attachment`, {
+      responseType: 'blob'
+    })
+    
+    const blob = new Blob([response.data])
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = existingAttachment.value.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('첨부파일 다운로드 실패:', error)
+    alert('첨부파일 다운로드에 실패했습니다.')
+  }
+}
+
 // 월세 지원 신청서 다운로드
 const handleDownloadRentalApplication = async () => {
   if (!rentalSeq.value) return
@@ -943,21 +1107,39 @@ const submitRentalApplication = async () => {
       billingAmount: rentalForm.billingAmount
     }
     
+    // FormData 생성
+    const formData = new FormData()
+    const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' })
+    formData.append('rentalSupportRequest', jsonBlob, 'rentalSupportRequest.json')
+    
+    // 파일이 있으면 추가
+    if (selectedFile.value) {
+      formData.append('file', selectedFile.value)
+    }
+    
     if (isEditMode.value && rentalSeq.value) {
       // 수정 모드
-      await updateRentalSupportApplication(rentalSeq.value, request)
+      await apiClient.put(`/rental/application/${rentalSeq.value}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       alert('수정되었습니다.')
       router.push('/my-applications')
     } else {
       // 신청 모드
-      const response = await createRentalSupportApplication(request)
+      const response = await apiClient.post('/rental/application', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
       // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
-      if (response.resultMsg && response.resultMsg.seq) {
+      if (response.data.resultMsg && response.data.resultMsg.seq) {
         router.push({
           path: '/application-success',
           query: {
             type: 'rental',
-            seq: response.resultMsg.seq
+            seq: response.data.resultMsg.seq
           }
         })
       } else {
@@ -966,7 +1148,12 @@ const submitRentalApplication = async () => {
     }
   } catch (error: any) {
     console.error(isEditMode.value ? '월세 지원 수정 실패:' : '월세 지원 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '월세 지원 수정에 실패했습니다.' : '월세 지원 신청에 실패했습니다.')
+    // BaseController를 통한 에러 응답: error.response.data.resultMsg.errorMessage
+    // GlobalExceptionHandler를 통한 에러 응답: error.response.data.errorMessage
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || 
+                        error.response?.data?.errorMessage || 
+                        error.message || 
+                        (isEditMode.value ? '월세 지원 수정에 실패했습니다.' : '월세 지원 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false
@@ -1160,6 +1347,101 @@ const submitRentalApplication = async () => {
 .submit-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 파일 업로드 스타일 */
+.file-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #f8f9fa;
+  border: 2px dashed #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.file-input-label:hover {
+  background-color: #e9ecef;
+  border-color: #1226aa;
+}
+
+.file-input-text {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.selected-file,
+.existing-file {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.file-name {
+  flex: 1;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #666;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.btn-download-file,
+.btn-remove-file {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.btn-download-file {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download-file:hover {
+  background-color: #0f1f8a;
+}
+
+.btn-remove-file {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-remove-file:hover {
+  background-color: #c82333;
 }
 
 @media (max-width: 768px) {

@@ -654,7 +654,12 @@ const submitExpenseApplication = async () => {
     }
   } catch (error: any) {
     console.error(isEditMode.value ? '개인 비용 수정 실패:' : '개인 비용 신청 실패:', error)
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || error.message || (isEditMode.value ? '개인 비용 수정에 실패했습니다.' : '개인 비용 신청에 실패했습니다.')
+    // BaseController를 통한 에러 응답: error.response.data.resultMsg.errorMessage
+    // GlobalExceptionHandler를 통한 에러 응답: error.response.data.errorMessage
+    const errorMessage = error.response?.data?.resultMsg?.errorMessage || 
+                        error.response?.data?.errorMessage || 
+                        error.message || 
+                        (isEditMode.value ? '개인 비용 수정에 실패했습니다.' : '개인 비용 신청에 실패했습니다.')
     alert(errorMessage)
   } finally {
     isSubmitting.value = false

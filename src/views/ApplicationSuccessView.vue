@@ -151,7 +151,9 @@ const loadApplicationSummary = async () => {
       }
     } else if (applicationType.value === 'rental') {
       const response = await getRentalSupportApplication(applicationSeq.value)
-      const rental = response.resultMsg
+      const result = response.resultMsg
+      // API 응답이 객체인 경우 (rentalSupport와 attachment 포함)
+      const rental = (result as any)?.rentalSupport || result
       if (rental) {
         summary.value = {
           '신청일자': formatDate(rental.requestDate || ''),

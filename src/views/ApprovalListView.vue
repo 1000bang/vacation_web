@@ -421,6 +421,21 @@
               <span class="detail-label">청구 사유:</span>
               <span class="detail-value">{{ rentalApprovalDetail.billingReason || '-' }}</span>
             </div>
+            <!-- 첨부파일 -->
+            <div v-if="rentalApprovalDetail.attachment" class="detail-row">
+              <span class="detail-label">첨부파일:</span>
+              <div class="attachment-info">
+                <span class="file-name">{{ rentalApprovalDetail.attachment.fileName }}</span>
+                <span class="file-size">({{ formatFileSize(rentalApprovalDetail.attachment.fileSize) }})</span>
+                <button 
+                  type="button" 
+                  @click="downloadRentalApprovalAttachment" 
+                  class="btn-download-file"
+                >
+                  다운로드
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -593,6 +608,7 @@ import {
   type PendingApproval
 } from '@/api/user'
 import { downloadVacationDocument } from '@/api/vacation'
+import apiClient from '@/api/axios'
 
 const router = useRouter()
 
@@ -636,6 +652,7 @@ const selectedApplication = ref<PendingApproval | null>(null)
 // 월세 지원 품의서 모달 관련
 const showRentalApprovalModal = ref(false)
 const rentalApprovalDetail = ref<any>(null)
+const rentalApprovalSeq = ref<number | null>(null)
 
 const user = ref<{ authVal: string } | null>(null)
 
@@ -898,19 +915,29 @@ const openRentalApprovalModal = async (rentalApproval: PendingApproval | number)
       seq = rentalApproval
       // seq만 전달된 경우 API로 조회
       const response = await getRentalSupport(seq)
+      const result = response.resultMsg
+      // API 응답이 객체인 경우 (rentalApproval와 attachment 포함)
+      const rental = (result as any)?.rentalApproval || result
       rentalApprovalDetail.value = {
-        ...response.resultMsg,
+        ...rental,
+        attachment: (result as any)?.attachment || null,
         applicant: undefined // API 응답에 applicant가 없을 수 있음
       }
+      rentalApprovalSeq.value = seq
     } else {
       // PendingApproval 객체가 전달된 경우
       seq = rentalApproval.seq
       applicant = rentalApproval.applicant
       const response = await getRentalSupport(seq)
+      const result = response.resultMsg
+      // API 응답이 객체인 경우 (rentalApproval와 attachment 포함)
+      const rental = (result as any)?.rentalApproval || result
       rentalApprovalDetail.value = {
-        ...response.resultMsg,
+        ...rental,
+        attachment: (result as any)?.attachment || null,
         applicant: applicant // PendingApproval에서 가져온 applicant 사용
       }
+      rentalApprovalSeq.value = seq
     }
     showRentalApprovalModal.value = true
   } catch (error) {
@@ -923,6 +950,40 @@ const openRentalApprovalModal = async (rentalApproval: PendingApproval | number)
 const closeRentalApprovalModal = () => {
   showRentalApprovalModal.value = false
   rentalApprovalDetail.value = null
+  rentalApprovalSeq.value = null
+}
+
+// 파일 크기 포맷팅
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 첨부파일 다운로드
+const downloadRentalApprovalAttachment = async () => {
+  if (!rentalApprovalSeq.value || !rentalApprovalDetail.value?.attachment) return
+  
+  try {
+    const response = await apiClient.get(`/rental/${rentalApprovalSeq.value}/attachment`, {
+      responseType: 'blob'
+    })
+    
+    const blob = new Blob([response.data])
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = rentalApprovalDetail.value.attachment.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('첨부파일 다운로드 실패:', error)
+    alert('첨부파일 다운로드에 실패했습니다.')
+  }
 }
 
 // 상세 모달 닫기
@@ -1513,6 +1574,47 @@ onActivated(async () => {
 
 .rental-modal-content .btn-close:hover {
   color: #333;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-info .file-name {
+  flex: 1;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.attachment-info .file-size {
+  color: #666;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.btn-download-file {
+  padding: 0.4rem 0.8rem;
+  background-color: #1226aa;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.btn-download-file:hover {
+  background-color: #0f1f8a;
 }
 
 .rental-detail-content {
