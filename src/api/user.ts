@@ -50,11 +50,19 @@ export interface ApiResponse<T> {
   messageTemplateId?: string
 }
 
+// 회원가입 응답 타입 (User 엔티티 직접 반환)
+export interface JoinResponse {
+  userId: number
+  email: string
+  name: string
+  status: string
+}
+
 /**
  * 회원가입 API
  */
-export const join = async (joinRequest: JoinRequest): Promise<ApiResponse<null>> => {
-  const response = await apiClient.post<ApiResponse<null>>('/user/join', joinRequest)
+export const join = async (joinRequest: JoinRequest): Promise<ApiResponse<JoinResponse>> => {
+  const response = await apiClient.post<ApiResponse<JoinResponse>>('/user/join', joinRequest)
   return response.data
 }
 
@@ -320,14 +328,17 @@ export interface ExpenseClaim {
 export interface ExpenseSub {
   seq: number
   parentSeq: number
+  expenseClaimSeq?: number // 백엔드 호환성 (parentSeq와 동일)
   childNo: number
   date: string
   usageDetail?: string
+  itemName?: string // 백엔드 호환성 (usageDetail과 동일)
   vendor?: string
   paymentMethod?: string
   project?: string
   amount: number
   note?: string
+  description?: string // 백엔드 호환성 (note와 동일)
   createdAt?: string
   attachment?: {
     seq: number
@@ -352,8 +363,8 @@ export interface ExpenseItem {
   } // 첨부파일 정보
 }
 
-export interface ExpenseClaimDetail {
-  expenseClaim: ExpenseClaim
+// 개인 비용 청구 상세 응답 타입 (VO 변경으로 단일 객체로 통합)
+export interface ExpenseClaimDetail extends ExpenseClaim {
   expenseSubList: ExpenseSub[]
 }
 
@@ -608,13 +619,13 @@ export const getPendingApprovals = async (
   vacation?: { list: PendingApproval[], totalCount: number },
   expense?: { list: PendingApproval[], totalCount: number },
   rental?: { list: PendingApproval[], totalCount: number },
-  rentalApproval?: { list: PendingApproval[], totalCount: number }
+  rentalProposal?: { list: PendingApproval[], totalCount: number }
 }>> => {
   const response = await apiClient.get<ApiResponse<{ 
     vacation?: { list: PendingApproval[], totalCount: number },
     expense?: { list: PendingApproval[], totalCount: number },
     rental?: { list: PendingApproval[], totalCount: number },
-    rentalApproval?: { list: PendingApproval[], totalCount: number }
+    rentalProposal?: { list: PendingApproval[], totalCount: number }
   }>>('/approval/pending', {
     params: {
       ...(type ? { type } : {}),
@@ -735,36 +746,36 @@ export const rejectRentalSupportByDivisionHead = async (seq: number, rejectionRe
 }
 
 /**
- * 월세 지원 품의서 승인 (팀장)
+ * 월세 품의서 승인 (팀장)
  */
-export const approveRentalApprovalByTeamLeader = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
-  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-approval/${seq}/approve/team-leader`)
+export const approveRentalProposalByTeamLeader = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/approve/team-leader`)
   return response.data
 }
 
 /**
- * 월세 지원 품의서 반려 (팀장)
+ * 월세 품의서 반려 (팀장)
  */
-export const rejectRentalApprovalByTeamLeader = async (seq: number, rejectionReason: string): Promise<ApiResponse<{ message: string }>> => {
-  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-approval/${seq}/reject/team-leader`, {
+export const rejectRentalProposalByTeamLeader = async (seq: number, rejectionReason: string): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/reject/team-leader`, {
     rejectionReason
   })
   return response.data
 }
 
 /**
- * 월세 지원 품의서 승인 (본부장)
+ * 월세 품의서 승인 (본부장)
  */
-export const approveRentalApprovalByDivisionHead = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
-  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-approval/${seq}/approve/division-head`)
+export const approveRentalProposalByDivisionHead = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/approve/division-head`)
   return response.data
 }
 
 /**
- * 월세 지원 품의서 반려 (본부장)
+ * 월세 품의서 반려 (본부장)
  */
-export const rejectRentalApprovalByDivisionHead = async (seq: number, rejectionReason: string): Promise<ApiResponse<{ message: string }>> => {
-  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-approval/${seq}/reject/division-head`, {
+export const rejectRentalProposalByDivisionHead = async (seq: number, rejectionReason: string): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/reject/division-head`, {
     rejectionReason
   })
   return response.data

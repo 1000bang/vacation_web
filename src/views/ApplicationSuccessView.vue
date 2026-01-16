@@ -43,6 +43,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { downloadVacationDocument, getVacationHistory } from '@/api/vacation'
 import { downloadExpenseClaim, downloadRentalSupportApplication, getExpenseClaim, getRentalSupportApplication } from '@/api/user'
+import { formatDate, formatNumber, formatBillingYyMonth } from '@/utils/formatUtils'
+import { getVacationTypeName } from '@/utils/vacationUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -66,45 +68,7 @@ const successMessage = computed(() => {
   }
 })
 
-// 휴가 구분 한글 변환
-const getVacationTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    'YEONCHA': '연차',
-    'GYEONGJO': '경조',
-    'CHULSAN': '출산',
-    'GYEOLGEUN': '결근',
-    'BYEONGGA': '병가',
-    'GITA': '기타',
-    'YEBIGUN': '예비군',
-    'AM_HALF': '오전 반차',
-    'PM_HALF': '오후 반차'
-  }
-  return typeMap[type] || type
-}
-
-// 날짜 포맷팅
-const formatDate = (dateStr: string): string => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}.${month}.${day}`
-}
-
-// 금액 포맷팅
-const formatNumber = (num: number): string => {
-  if (!num) return '0'
-  return num.toLocaleString('ko-KR')
-}
-
-// 청구 월 포맷팅 (YYYYMM -> YYYY.MM)
-const formatBillingYyMonth = (yyMonth: number): string => {
-  if (!yyMonth) return ''
-  const year = Math.floor(yyMonth / 100)
-  const month = yyMonth % 100
-  return `${year}.${String(month).padStart(2, '0')}`
-}
+// 포맷팅 및 유틸리티 함수는 공통 유틸리티에서 import하여 사용
 
 onMounted(async () => {
   // 쿼리 파라미터에서 신청 타입과 seq 가져오기
@@ -143,10 +107,10 @@ const loadApplicationSummary = async () => {
       const detail = response.resultMsg
       if (detail) {
         summary.value = {
-          '신청일자': formatDate(detail.expenseClaim.requestDate),
-          '청구 월': formatBillingYyMonth(detail.expenseClaim.billingYyMonth),
+          '신청일자': formatDate(detail.requestDate),
+          '청구 월': formatBillingYyMonth(detail.billingYyMonth),
           '항목 수': `${detail.expenseSubList.length}개`,
-          '총 금액': `${formatNumber(detail.expenseClaim.totalAmount || 0)}원`
+          '총 금액': `${formatNumber(detail.totalAmount || 0)}원`
         }
       }
     } else if (applicationType.value === 'rental') {

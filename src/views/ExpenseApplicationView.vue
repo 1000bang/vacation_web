@@ -248,6 +248,7 @@ import {
 } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import expenseImage from '@/assets/image/help/expense.png'
+import { getTodayDate } from '@/utils/formatUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -287,14 +288,7 @@ const closeHelpModal = () => {
   helpModal.isOpen = false
 }
 
-// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
-const getTodayDate = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// getTodayDate는 공통 유틸리티에서 import하여 사용
 
 const expenseForm = reactive<{
   requestDate: string
@@ -553,8 +547,8 @@ const loadExpenseClaimData = async (seq: number) => {
     const response = await getExpenseClaim(seq)
     const detail = response.resultMsg
     
-    if (detail && detail.expenseClaim) {
-      const claim = detail.expenseClaim
+    if (detail) {
+      const claim = detail
       currentExpenseClaim.value = claim
       expenseForm.requestDate = claim.requestDate || getTodayDate()
       expenseForm.month = claim.billingYyMonth ? Math.floor(claim.billingYyMonth % 100) : null

@@ -173,11 +173,11 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">계약 월세 금액:</span>
-              <span>{{ formatCurrency(rental.contractMonthlyRent) }}원</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">청구 금액:</span>
-              <span>{{ formatCurrency(rental.billingAmount) }}원</span>
+              <span>{{ formatNumber(rental.contractMonthlyRent) }}원</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">청구 금액:</span>
+              <span>{{ formatNumber(rental.billingAmount) }}원</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">청구 개시일:</span>
@@ -417,6 +417,9 @@ import propPeriodImage from '@/assets/image/help/prop_period.png'
 import propAmountImage from '@/assets/image/help/prop_amount.png'
 import propBillingStartImage from '@/assets/image/help/prop_billingStart.png'
 import apiClient from '@/api/axios'
+import { formatDate, formatNumber, getTodayDate } from '@/utils/formatUtils'
+import { getApprovalStatusName, getApprovalStatusClass } from '@/utils/statusUtils'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const userInfo = ref<UserInfoResponse | null>(null)
 
@@ -848,7 +851,7 @@ const saveRentalSupport = async () => {
     // FormData 생성
     const formData = new FormData()
     const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' })
-    formData.append('rentalApprovalRequest', jsonBlob, 'rentalApprovalRequest.json')
+    formData.append('rentalProposalRequest', jsonBlob, 'rentalProposalRequest.json')
     
     // 파일이 있으면 추가
     if (selectedFile.value) {
@@ -902,46 +905,8 @@ const closeRentalForm = () => {
   }
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('ko-KR')
-}
-
-// 승인 상태명 반환
-const getApprovalStatusName = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  const statusMap: Record<string, string> = {
-    'A': '요청',
-    'AM': '수정후 재요청',
-    'B': '팀장 승인',
-    'RB': '팀장 반려',
-    'C': '본부장 승인',
-    'RC': '본부장 반려'
-  }
-  return statusMap[actualStatus] || actualStatus
-}
-
-// 승인 상태에 따른 CSS 클래스 반환
-const getApprovalStatusClass = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  // 반려 상태만 빨간색
-  if (actualStatus === 'RB' || actualStatus === 'RC') {
-    return 'status-rejected'
-  }
-  // 최종 승인 상태만 초록색
-  if (actualStatus === 'C') {
-    return 'status-final-approved'
-  }
-  // 나머지는 기본 색상
-  return 'status-default'
-}
-
-const formatCurrency = (amount: number) => {
-  return amount.toLocaleString('ko-KR')
-}
+// 포맷팅 및 유틸리티 함수는 공통 유틸리티에서 import하여 사용
+// formatCurrency는 formatNumber로 대체
 
 const loadVacationInfo = async () => {
   try {

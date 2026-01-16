@@ -6,7 +6,8 @@ export interface VacationRequest {
   startDate: string
   endDate: string
   vacationType: string
-  period: number
+  period?: number // API 요청용
+  requestedVacationDays?: number // 프론트엔드 폼용 (period로 변환됨)
   reason?: string
   // 수정 모드용 연차 정보 (선택적)
   annualVacationDays?: number
@@ -31,9 +32,8 @@ export interface VacationHistory {
   approvalStatus?: string
 }
 
-// 휴가 내역 상세 조회 응답 타입
-export interface VacationHistoryDetail {
-  vacationHistory: VacationHistory
+// 휴가 내역 상세 조회 응답 타입 (VO 변경으로 단일 객체로 통합)
+export interface VacationHistoryDetail extends VacationHistory {
   rejectionReason?: string
   attachment?: {
     seq: number

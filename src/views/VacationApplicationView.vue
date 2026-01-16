@@ -278,6 +278,7 @@ import {
   rejectVacationByDivisionHead 
 } from '@/api/user'
 import apiClient from '@/api/axios'
+import { getTodayDate } from '@/utils/formatUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -295,14 +296,7 @@ const goBack = () => {
   }
 }
 
-// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
-const getTodayDate = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// getTodayDate는 공통 유틸리티에서 import하여 사용
 
 const vacationForm = ref({
   requestDate: getTodayDate(),
@@ -494,8 +488,8 @@ const loadVacationData = async (seq: number) => {
     const result = response.resultMsg
     
     if (result) {
-      // API 응답이 객체인 경우 (vacationHistory와 rejectionReason 포함)
-      const vacation = result.vacationHistory || result
+      // VO 변경으로 단일 객체로 통합됨 (vacationHistory, rejectionReason, attachment 포함)
+      const vacation = result
       
       // 첨부파일 정보 저장
       if (result.attachment) {

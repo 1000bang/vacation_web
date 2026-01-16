@@ -39,9 +39,7 @@
                 <td>{{ getVacationTypeName(vacation.type) }}</td>
                 <td>{{ vacation.reason || '-' }}</td>
                 <td>
-                  <span :class="getApprovalStatusClass(vacation.approvalStatus)">
-                    {{ getApprovalStatusName(vacation.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="vacation.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
@@ -76,25 +74,13 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showVacationPagination" class="pagination">
-          <button 
-            @click="vacationCurrentPage = Math.max(1, vacationCurrentPage - 1)"
-            :disabled="vacationCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ vacationCurrentPage }} / {{ vacationTotalPages }}
-          </span>
-          <button 
-            @click="vacationCurrentPage = Math.min(vacationTotalPages, vacationCurrentPage + 1)"
-            :disabled="vacationCurrentPage === vacationTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="vacationCurrentPage"
+          :total-pages="vacationTotalPages"
+          :show-pagination="showVacationPagination"
+          @prev="vacationCurrentPage = Math.max(1, vacationCurrentPage - 1)"
+          @next="vacationCurrentPage = Math.min(vacationTotalPages, vacationCurrentPage + 1)"
+        />
       </div>
 
       <!-- 개인 비용 신청 목록 (테이블 형식) -->
@@ -129,9 +115,7 @@
                 <td>{{ expense.childCnt }}개</td>
                 <td>{{ formatNumber(expense.totalAmount || 0) }}원</td>
                 <td>
-                  <span :class="getApprovalStatusClass(expense.approvalStatus)">
-                    {{ getApprovalStatusName(expense.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="expense.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
@@ -166,25 +150,13 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showExpensePagination" class="pagination">
-          <button 
-            @click="expenseCurrentPage = Math.max(1, expenseCurrentPage - 1)"
-            :disabled="expenseCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ expenseCurrentPage }} / {{ expenseTotalPages }}
-          </span>
-          <button 
-            @click="expenseCurrentPage = Math.min(expenseTotalPages, expenseCurrentPage + 1)"
-            :disabled="expenseCurrentPage === expenseTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="expenseCurrentPage"
+          :total-pages="expenseTotalPages"
+          :show-pagination="showExpensePagination"
+          @prev="expenseCurrentPage = Math.max(1, expenseCurrentPage - 1)"
+          @next="expenseCurrentPage = Math.min(expenseTotalPages, expenseCurrentPage + 1)"
+        />
       </div>
 
       <!-- 월세 지원 신청 목록 (테이블 형식) -->
@@ -221,9 +193,7 @@
                 <td>{{ formatNumber(rental.billingAmount || 0) }}원</td>
                 <td>{{ formatDate(rental.paymentDate) }}</td>
                 <td>
-                  <span :class="getApprovalStatusClass(rental.approvalStatus)">
-                    {{ getApprovalStatusName(rental.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="rental.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
@@ -258,31 +228,19 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showRentalPagination" class="pagination">
-          <button 
-            @click="rentalCurrentPage = Math.max(1, rentalCurrentPage - 1)"
-            :disabled="rentalCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ rentalCurrentPage }} / {{ rentalTotalPages }}
-          </span>
-          <button 
-            @click="rentalCurrentPage = Math.min(rentalTotalPages, rentalCurrentPage + 1)"
-            :disabled="rentalCurrentPage === rentalTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="rentalCurrentPage"
+          :total-pages="rentalTotalPages"
+          :show-pagination="showRentalPagination"
+          @prev="rentalCurrentPage = Math.max(1, rentalCurrentPage - 1)"
+          @next="rentalCurrentPage = Math.min(rentalTotalPages, rentalCurrentPage + 1)"
+        />
       </div>
 
       <!-- 월세 지원 품의서 목록 (테이블 형식) -->
       <div class="application-section">
         <h2>월세 지원 품의서</h2>
-        <div v-if="rentalApprovalList.length === 0" class="empty-state">
+        <div v-if="rentalProposalList.length === 0" class="empty-state">
           승인 대기 중인 월세 지원 품의서가 없습니다.
         </div>
         <div v-else class="table-container">
@@ -300,46 +258,44 @@
             </thead>
             <tbody>
               <tr 
-                v-for="rentalApproval in rentalApprovalList" 
-                :key="'rental-approval-' + rentalApproval.seq"
-                @click="openRentalApprovalModal(rentalApproval)"
+                v-for="rentalProposal in rentalProposalList" 
+                :key="'rental-proposal-' + rentalProposal.seq"
+                @click="openRentalApprovalModal(rentalProposal)"
                 class="clickable-row"
               >
-                <td>{{ rentalApproval.applicant || '-' }}</td>
-                <td>{{ formatDate(rentalApproval.contractStartDate) }} ~ {{ formatDate(rentalApproval.contractEndDate) }}</td>
-                <td>{{ formatNumber(rentalApproval.contractMonthlyRent || 0) }}원</td>
-                <td>{{ formatNumber(rentalApproval.billingAmount || 0) }}원</td>
-                <td>{{ formatDate(rentalApproval.billingStartDate) }}</td>
+                <td>{{ rentalProposal.applicant || '-' }}</td>
+                <td>{{ formatDate(rentalProposal.contractStartDate) }} ~ {{ formatDate(rentalProposal.contractEndDate) }}</td>
+                <td>{{ formatNumber(rentalProposal.contractMonthlyRent || 0) }}원</td>
+                <td>{{ formatNumber(rentalProposal.billingAmount || 0) }}원</td>
+                <td>{{ formatDate(rentalProposal.billingStartDate) }}</td>
                 <td>
-                  <span :class="getApprovalStatusClass(rentalApproval.approvalStatus)">
-                    {{ getApprovalStatusName(rentalApproval.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="rentalProposal.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
                     <button
-                      v-if="canApprove(rentalApproval.approvalStatus)"
-                      @click="handleApprove(rentalApproval)"
+                      v-if="canApprove(rentalProposal.approvalStatus)"
+                      @click="handleApprove(rentalProposal)"
                       class="btn btn-approve btn-small"
-                      :disabled="isProcessing === rentalApproval.seq"
+                      :disabled="isProcessing === rentalProposal.seq"
                     >
                       승인
                     </button>
                     <button
-                      v-if="canReject(rentalApproval.approvalStatus)"
-                      @click="handleReject(rentalApproval)"
+                      v-if="canReject(rentalProposal.approvalStatus)"
+                      @click="handleReject(rentalProposal)"
                       class="btn btn-reject btn-small"
-                      :disabled="isProcessing === rentalApproval.seq"
+                      :disabled="isProcessing === rentalProposal.seq"
                     >
                       반려
                     </button>
                     <button
-                      v-if="rentalApproval.approvalStatus === 'C'"
-                      @click="handleDownloadRentalProposal(rentalApproval.seq, rentalApproval.applicant)"
+                      v-if="rentalProposal.approvalStatus === 'C'"
+                      @click="handleDownloadRentalProposal(rentalProposal.seq, rentalProposal.applicant)"
                       class="btn btn-download btn-small"
-                      :disabled="isDownloading === rentalApproval.seq"
+                      :disabled="isDownloading === rentalProposal.seq"
                     >
-                      {{ isDownloading === rentalApproval.seq ? '다운로드 중...' : '다운로드' }}
+                      {{ isDownloading === rentalProposal.seq ? '다운로드 중...' : '다운로드' }}
                     </button>
                   </div>
                 </td>
@@ -348,85 +304,71 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showRentalApprovalPagination" class="pagination">
-          <button 
-            @click="rentalApprovalCurrentPage = Math.max(1, rentalApprovalCurrentPage - 1)"
-            :disabled="rentalApprovalCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ rentalApprovalCurrentPage }} / {{ rentalApprovalTotalPages }}
-          </span>
-          <button 
-            @click="rentalApprovalCurrentPage = Math.min(rentalApprovalTotalPages, rentalApprovalCurrentPage + 1)"
-            :disabled="rentalApprovalCurrentPage === rentalApprovalTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="rentalProposalCurrentPage"
+          :total-pages="rentalProposalTotalPages"
+          :show-pagination="showRentalApprovalPagination"
+          @prev="rentalProposalCurrentPage = Math.max(1, rentalProposalCurrentPage - 1)"
+          @next="rentalProposalCurrentPage = Math.min(rentalProposalTotalPages, rentalProposalCurrentPage + 1)"
+        />
       </div>
     </div>
 
     <!-- 월세 지원 품의서 상세 모달 -->
-    <div v-if="showRentalApprovalModal" class="rental-approval-modal" @click="closeRentalApprovalModal">
+    <div v-if="showRentalApprovalModal" class="rental-proposal-modal" @click="closeRentalApprovalModal">
       <div class="modal-content rental-modal-content" @click.stop>
         <div class="modal-header">
           <h3>월세 지원 품의서 상세</h3>
           <button @click="closeRentalApprovalModal" class="btn-close">×</button>
         </div>
-        <div v-if="rentalApprovalDetail" class="rental-detail-content">
+        <div v-if="rentalProposalDetail" class="rental-detail-content">
           <div class="detail-section">
             <div class="detail-row">
               <span class="detail-label">신청자:</span>
-              <span class="detail-value">{{ rentalApprovalDetail.applicant || '-' }}</span>
+              <span class="detail-value">{{ rentalProposalDetail.applicant || '-' }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">승인상태:</span>
-              <span :class="getApprovalStatusClass(rentalApprovalDetail.approvalStatus)">
-                {{ getApprovalStatusName(rentalApprovalDetail.approvalStatus) }}
-              </span>
+              <StatusBadge :status="rentalProposalDetail.approvalStatus" />
             </div>
             <div class="detail-row">
               <span class="detail-label">기존 거주지 주소:</span>
-              <span class="detail-value">{{ rentalApprovalDetail.previousAddress || '-' }}</span>
+              <span class="detail-value">{{ rentalProposalDetail.previousAddress || '-' }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">월세 계약 주소:</span>
-              <span class="detail-value">{{ rentalApprovalDetail.rentalAddress || '-' }}</span>
+              <span class="detail-value">{{ rentalProposalDetail.rentalAddress || '-' }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">계약 시작일:</span>
-              <span class="detail-value">{{ formatDate(rentalApprovalDetail.contractStartDate) }}</span>
+              <span class="detail-value">{{ formatDate(rentalProposalDetail.contractStartDate) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">계약 종료일:</span>
-              <span class="detail-value">{{ formatDate(rentalApprovalDetail.contractEndDate) }}</span>
+              <span class="detail-value">{{ formatDate(rentalProposalDetail.contractEndDate) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">계약 월세 금액:</span>
-              <span class="detail-value">{{ formatNumber(rentalApprovalDetail.contractMonthlyRent || 0) }}원</span>
+              <span class="detail-value">{{ formatNumber(rentalProposalDetail.contractMonthlyRent || 0) }}원</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">청구 금액:</span>
-              <span class="detail-value">{{ formatNumber(rentalApprovalDetail.billingAmount || 0) }}원</span>
+              <span class="detail-value">{{ formatNumber(rentalProposalDetail.billingAmount || 0) }}원</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">청구 개시일:</span>
-              <span class="detail-value">{{ formatDate(rentalApprovalDetail.billingStartDate) }}</span>
+              <span class="detail-value">{{ formatDate(rentalProposalDetail.billingStartDate) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">청구 사유:</span>
-              <span class="detail-value">{{ rentalApprovalDetail.billingReason || '-' }}</span>
+              <span class="detail-value">{{ rentalProposalDetail.billingReason || '-' }}</span>
             </div>
             <!-- 첨부파일 -->
-            <div v-if="rentalApprovalDetail.attachment" class="detail-row">
+            <div v-if="rentalProposalDetail.attachment" class="detail-row">
               <span class="detail-label">첨부파일:</span>
               <div class="attachment-info">
-                <span class="file-name">{{ rentalApprovalDetail.attachment.fileName }}</span>
-                <span class="file-size">({{ formatFileSize(rentalApprovalDetail.attachment.fileSize) }})</span>
+                <span class="file-name">{{ rentalProposalDetail.attachment.fileName }}</span>
+                <span class="file-size">({{ formatFileSize(rentalProposalDetail.attachment.fileSize) }})</span>
                 <button 
                   type="button" 
                   @click="downloadRentalApprovalAttachment" 
@@ -493,14 +435,12 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">승인상태:</span>
-              <span :class="getApprovalStatusClass(selectedApplication.approvalStatus)">
-                {{ getApprovalStatusName(selectedApplication.approvalStatus) }}
-              </span>
+              <StatusBadge :status="selectedApplication.approvalStatus" />
             </div>
           </div>
           
           <!-- 개인 비용 신청 상세 -->
-          <div v-else-if="selectedApplication?.billingYyMonth && !selectedApplication?.contractMonthlyRent" class="detail-section">
+          <div v-else-if="selectedApplication?.billingYyMonth && !selectedApplication?.contractMonthlyRent && !selectedApplication?.rentalAddress" class="detail-section">
             <h4>개인 비용 정보</h4>
             <div class="detail-row">
               <span class="detail-label">신청일:</span>
@@ -520,14 +460,12 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">승인상태:</span>
-              <span :class="getApprovalStatusClass(selectedApplication.approvalStatus)">
-                {{ getApprovalStatusName(selectedApplication.approvalStatus) }}
-              </span>
+              <StatusBadge :status="selectedApplication.approvalStatus" />
             </div>
           </div>
           
           <!-- 월세 지원 신청 상세 -->
-          <div v-else-if="selectedApplication?.contractMonthlyRent" class="detail-section">
+          <div v-else-if="selectedApplication?.contractMonthlyRent && !selectedApplication?.rentalAddress" class="detail-section">
             <h4>월세 지원 정보</h4>
             <div class="detail-row">
               <span class="detail-label">신청일:</span>
@@ -551,9 +489,7 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">승인상태:</span>
-              <span :class="getApprovalStatusClass(selectedApplication.approvalStatus)">
-                {{ getApprovalStatusName(selectedApplication.approvalStatus) }}
-              </span>
+              <StatusBadge :status="selectedApplication.approvalStatus" />
             </div>
           </div>
         </div>
@@ -597,10 +533,10 @@ import {
   rejectRentalSupportByTeamLeader,
   approveRentalSupportByDivisionHead,
   rejectRentalSupportByDivisionHead,
-  approveRentalApprovalByTeamLeader,
-  rejectRentalApprovalByTeamLeader,
-  approveRentalApprovalByDivisionHead,
-  rejectRentalApprovalByDivisionHead,
+  approveRentalProposalByTeamLeader,
+  rejectRentalProposalByTeamLeader,
+  approveRentalProposalByDivisionHead,
+  rejectRentalProposalByDivisionHead,
   downloadExpenseClaim,
   downloadRentalSupportApplication,
   downloadRentalProposal,
@@ -609,6 +545,10 @@ import {
 } from '@/api/user'
 import { downloadVacationDocument } from '@/api/vacation'
 import apiClient from '@/api/axios'
+import { formatDate, formatNumber, formatBillingYyMonth } from '@/utils/formatUtils'
+import { getVacationTypeName } from '@/utils/vacationUtils'
+import StatusBadge from '@/components/StatusBadge.vue'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 
@@ -617,29 +557,29 @@ const itemsPerPage = 5
 const vacationCurrentPage = ref(1)
 const expenseCurrentPage = ref(1)
 const rentalCurrentPage = ref(1)
-const rentalApprovalCurrentPage = ref(1)
+const rentalProposalCurrentPage = ref(1)
 
 const vacationList = ref<PendingApproval[]>([])
 const expenseList = ref<PendingApproval[]>([])
 const rentalList = ref<PendingApproval[]>([])
-const rentalApprovalList = ref<PendingApproval[]>([])
+const rentalProposalList = ref<PendingApproval[]>([])
 
 const vacationTotalCount = ref(0)
 const expenseTotalCount = ref(0)
 const rentalTotalCount = ref(0)
-const rentalApprovalTotalCount = ref(0)
+const rentalProposalTotalCount = ref(0)
 
 // 총 페이지 수 계산
 const vacationTotalPages = computed(() => Math.ceil(vacationTotalCount.value / itemsPerPage))
 const expenseTotalPages = computed(() => Math.ceil(expenseTotalCount.value / itemsPerPage))
 const rentalTotalPages = computed(() => Math.ceil(rentalTotalCount.value / itemsPerPage))
-const rentalApprovalTotalPages = computed(() => Math.ceil(rentalApprovalTotalCount.value / itemsPerPage))
+const rentalProposalTotalPages = computed(() => Math.ceil(rentalProposalTotalCount.value / itemsPerPage))
 
 // 페이지 버튼 표시 여부
 const showVacationPagination = computed(() => vacationTotalCount.value >= itemsPerPage)
 const showExpensePagination = computed(() => expenseTotalCount.value >= itemsPerPage)
 const showRentalPagination = computed(() => rentalTotalCount.value >= itemsPerPage)
-const showRentalApprovalPagination = computed(() => rentalApprovalTotalCount.value >= itemsPerPage)
+const showRentalApprovalPagination = computed(() => rentalProposalTotalCount.value >= itemsPerPage)
 
 const isProcessing = ref<number | null>(null)
 const isDownloading = ref<number | null>(null)
@@ -651,83 +591,14 @@ const selectedApplication = ref<PendingApproval | null>(null)
 
 // 월세 지원 품의서 모달 관련
 const showRentalApprovalModal = ref(false)
-const rentalApprovalDetail = ref<any>(null)
-const rentalApprovalSeq = ref<number | null>(null)
+const rentalProposalDetail = ref<any>(null)
+const rentalProposalSeq = ref<number | null>(null)
 
 const user = ref<{ authVal: string } | null>(null)
 
-// 날짜 포맷팅
-const formatDate = (dateString: string | undefined): string => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}.${month}.${day}`
-}
+// 포맷팅 및 유틸리티 함수는 공통 유틸리티에서 import하여 사용
 
-// 숫자 포맷팅
-const formatNumber = (num: number): string => {
-  return num.toLocaleString('ko-KR')
-}
-
-// 청구 년월 포맷팅 (YYYYMM -> YYYY.MM)
-const formatBillingYyMonth = (billingYyMonth: number | undefined): string => {
-  if (!billingYyMonth) return ''
-  const year = Math.floor(billingYyMonth / 100)
-  const month = billingYyMonth % 100
-  return `${year}.${month.toString().padStart(2, '0')}`
-}
-
-// 휴가 구분 한글 변환
-const getVacationTypeName = (type: string | undefined): string => {
-  if (!type) return '-'
-  const typeMap: Record<string, string> = {
-    'YEONCHA': '연차',
-    'GYEONGJO': '경조',
-    'CHULSAN': '출산',
-    'GYEOLGEUN': '결근',
-    'BYEONGGA': '병가',
-    'GITA': '기타',
-    'YEBIGUN': '예비군',
-    'AM_HALF': '오전 반차',
-    'PM_HALF': '오후 반차'
-  }
-  return typeMap[type] || type
-}
-
-// 승인 상태 한글 변환
-const getApprovalStatusName = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  const statusMap: Record<string, string> = {
-    'A': '요청',
-    'AM': '수정후 재요청',
-    'B': '팀장 승인',
-    'RB': '팀장 반려',
-    'C': '본부장 승인',
-    'RC': '본부장 반려'
-  }
-  return statusMap[actualStatus] || actualStatus
-}
-
-// 승인 상태 스타일 클래스
-const getApprovalStatusClass = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  // 반려 상태만 빨간색
-  if (actualStatus === 'RB' || actualStatus === 'RC') {
-    return 'status-rejected'
-  }
-  // 최종 승인 상태만 초록색
-  if (actualStatus === 'C') {
-    return 'status-final-approved'
-  }
-  // 나머지는 기본 색상
-  return 'status-default'
-}
-
-// 승인 가능 여부 확인
+// 승인 가능 여부 확인 (user 정보 필요하므로 로컬 함수 유지)
 const canApprove = (status: string | undefined | null): boolean => {
   if (!user.value) return false
   
@@ -783,6 +654,7 @@ const canReject = (status: string | undefined | null): boolean => {
 const getApplicationTypeName = (application: PendingApproval | null): string => {
   if (!application) return '신청'
   if (application.type) return '휴가'
+  if (application.rentalAddress) return '월세 품의'
   if (application.billingYyMonth) {
     if (application.contractMonthlyRent) return '월세 지원'
     return '개인 비용'
@@ -832,11 +704,11 @@ const loadRentalList = async (page: number = 0) => {
 
 const loadRentalApprovalList = async (page: number = 0) => {
   try {
-    const response = await getPendingApprovals(undefined, 'rentalApproval', page, itemsPerPage)
+    const response = await getPendingApprovals(undefined, 'rentalProposal', page, itemsPerPage)
     const data = response.resultMsg as any
-    if (data?.rentalApproval) {
-      rentalApprovalList.value = data.rentalApproval.list || []
-      rentalApprovalTotalCount.value = data.rentalApproval.totalCount || 0
+    if (data?.rentalProposal) {
+      rentalProposalList.value = data.rentalProposal.list || []
+      rentalProposalTotalCount.value = data.rentalProposal.totalCount || 0
     }
   } catch (error) {
     console.error('월세 지원 품의서 목록 조회 실패:', error)
@@ -862,7 +734,7 @@ watch(rentalCurrentPage, (newPage) => {
   }
 })
 
-watch(rentalApprovalCurrentPage, (newPage) => {
+watch(rentalProposalCurrentPage, (newPage) => {
   if (newPage > 0) {
     loadRentalApprovalList(newPage - 1)
   }
@@ -879,7 +751,7 @@ const loadPendingApprovals = async () => {
   vacationCurrentPage.value = 1
   expenseCurrentPage.value = 1
   rentalCurrentPage.value = 1
-  rentalApprovalCurrentPage.value = 1
+  rentalProposalCurrentPage.value = 1
 }
 
 // 신청서 상세 보기 (신청 페이지로 이동)
@@ -899,45 +771,45 @@ const handleViewDetail = (application: PendingApproval) => {
       path: `/rental-application/${application.seq}`,
       query: { approval: 'true' }
     })
-  } else if (application.applicationType === 'RENTAL_APPROVAL') {
+  } else if (application.applicationType === 'RENTAL_PROPOSAL') {
     // 월세 지원 품의서는 모달로 표시
     openRentalApprovalModal(application.seq)
   }
 }
 
 // 월세 지원 품의서 모달 열기
-const openRentalApprovalModal = async (rentalApproval: PendingApproval | number) => {
+const openRentalApprovalModal = async (rentalProposal: PendingApproval | number) => {
   try {
     let seq: number
     let applicant: string | undefined
     
-    if (typeof rentalApproval === 'number') {
-      seq = rentalApproval
+    if (typeof rentalProposal === 'number') {
+      seq = rentalProposal
       // seq만 전달된 경우 API로 조회
       const response = await getRentalSupport(seq)
       const result = response.resultMsg
-      // API 응답이 객체인 경우 (rentalApproval와 attachment 포함)
-      const rental = (result as any)?.rentalApproval || result
-      rentalApprovalDetail.value = {
+      // API 응답이 객체인 경우 (rentalProposal와 attachment 포함)
+      const rental = (result as any)?.rentalProposal || result
+      rentalProposalDetail.value = {
         ...rental,
         attachment: (result as any)?.attachment || null,
         applicant: undefined // API 응답에 applicant가 없을 수 있음
       }
-      rentalApprovalSeq.value = seq
+      rentalProposalSeq.value = seq
     } else {
       // PendingApproval 객체가 전달된 경우
-      seq = rentalApproval.seq
-      applicant = rentalApproval.applicant
+      seq = rentalProposal.seq
+      applicant = rentalProposal.applicant
       const response = await getRentalSupport(seq)
       const result = response.resultMsg
-      // API 응답이 객체인 경우 (rentalApproval와 attachment 포함)
-      const rental = (result as any)?.rentalApproval || result
-      rentalApprovalDetail.value = {
+      // API 응답이 객체인 경우 (rentalProposal와 attachment 포함)
+      const rental = (result as any)?.rentalProposal || result
+      rentalProposalDetail.value = {
         ...rental,
         attachment: (result as any)?.attachment || null,
         applicant: applicant // PendingApproval에서 가져온 applicant 사용
       }
-      rentalApprovalSeq.value = seq
+      rentalProposalSeq.value = seq
     }
     showRentalApprovalModal.value = true
   } catch (error) {
@@ -949,8 +821,8 @@ const openRentalApprovalModal = async (rentalApproval: PendingApproval | number)
 // 월세 지원 품의서 모달 닫기
 const closeRentalApprovalModal = () => {
   showRentalApprovalModal.value = false
-  rentalApprovalDetail.value = null
-  rentalApprovalSeq.value = null
+  rentalProposalDetail.value = null
+  rentalProposalSeq.value = null
 }
 
 // 파일 크기 포맷팅
@@ -964,10 +836,10 @@ const formatFileSize = (bytes: number): string => {
 
 // 첨부파일 다운로드
 const downloadRentalApprovalAttachment = async () => {
-  if (!rentalApprovalSeq.value || !rentalApprovalDetail.value?.attachment) return
+  if (!rentalProposalSeq.value || !rentalProposalDetail.value?.attachment) return
   
   try {
-    const response = await apiClient.get(`/rental/${rentalApprovalSeq.value}/attachment`, {
+    const response = await apiClient.get(`/rental/${rentalProposalSeq.value}/attachment`, {
       responseType: 'blob'
     })
     
@@ -975,7 +847,7 @@ const downloadRentalApprovalAttachment = async () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = rentalApprovalDetail.value.attachment.fileName
+    link.download = rentalProposalDetail.value.attachment.fileName
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -1006,8 +878,8 @@ const handleApprove = async (application: PendingApproval | null) => {
     // applicationType을 applicationType 필드로 먼저 확인
     const applicationType = application.applicationType || 
                             (application.type ? 'VACATION' : 
-                            (application.contractMonthlyRent ? 
-                              (application.rentalAddress ? 'RENTAL_APPROVAL' : 'RENTAL') : 'EXPENSE'))
+                            (application.rentalAddress ? 'RENTAL_PROPOSAL' :
+                            (application.contractMonthlyRent ? 'RENTAL' : 'EXPENSE')))
     
     console.log('승인 처리 시작:', { seq: application.seq, applicationType, authVal, currentStatus: application.approvalStatus })
     
@@ -1018,8 +890,8 @@ const handleApprove = async (application: PendingApproval | null) => {
         await approveExpenseClaimByTeamLeader(application.seq)
       } else if (applicationType === 'RENTAL') {
         await approveRentalSupportByTeamLeader(application.seq)
-      } else if (applicationType === 'RENTAL_APPROVAL') {
-        await approveRentalApprovalByTeamLeader(application.seq)
+      } else if (applicationType === 'RENTAL_PROPOSAL') {
+        await approveRentalProposalByTeamLeader(application.seq)
       }
     } else if (authVal === 'bb') {
       if (applicationType === 'VACATION') {
@@ -1028,8 +900,8 @@ const handleApprove = async (application: PendingApproval | null) => {
         await approveExpenseClaimByDivisionHead(application.seq)
       } else if (applicationType === 'RENTAL') {
         await approveRentalSupportByDivisionHead(application.seq)
-      } else if (applicationType === 'RENTAL_APPROVAL') {
-        await approveRentalApprovalByDivisionHead(application.seq)
+      } else if (applicationType === 'RENTAL_PROPOSAL') {
+        await approveRentalProposalByDivisionHead(application.seq)
       }
     } else if (authVal === 'ma') {
       // 관리자는 팀장 또는 본부장 역할 수행 가능
@@ -1041,8 +913,8 @@ const handleApprove = async (application: PendingApproval | null) => {
           await approveExpenseClaimByTeamLeader(application.seq)
         } else if (applicationType === 'RENTAL') {
           await approveRentalSupportByTeamLeader(application.seq)
-        } else if (applicationType === 'RENTAL_APPROVAL') {
-          await approveRentalApprovalByTeamLeader(application.seq)
+        } else if (applicationType === 'RENTAL_PROPOSAL') {
+          await approveRentalProposalByTeamLeader(application.seq)
         }
       } else if (status === 'B') {
         if (applicationType === 'VACATION') {
@@ -1051,8 +923,8 @@ const handleApprove = async (application: PendingApproval | null) => {
           await approveExpenseClaimByDivisionHead(application.seq)
         } else if (applicationType === 'RENTAL') {
           await approveRentalSupportByDivisionHead(application.seq)
-        } else if (applicationType === 'RENTAL_APPROVAL') {
-          await approveRentalApprovalByDivisionHead(application.seq)
+        } else if (applicationType === 'RENTAL_PROPOSAL') {
+          await approveRentalProposalByDivisionHead(application.seq)
         }
       }
     }
@@ -1067,8 +939,8 @@ const handleApprove = async (application: PendingApproval | null) => {
       await loadExpenseList(expenseCurrentPage.value - 1)
     } else if (applicationType === 'RENTAL') {
       await loadRentalList(rentalCurrentPage.value - 1)
-    } else if (applicationType === 'RENTAL_APPROVAL') {
-      await loadRentalApprovalList(rentalApprovalCurrentPage.value - 1)
+    } else if (applicationType === 'RENTAL_PROPOSAL') {
+      await loadRentalApprovalList(rentalProposalCurrentPage.value - 1)
     }
     console.log('목록 새로고침 완료')
     
@@ -1120,8 +992,8 @@ const confirmReject = async () => {
     // applicationType을 applicationType 필드로 먼저 확인
     const applicationType = currentRejectItem.value.applicationType || 
                             (currentRejectItem.value.type ? 'VACATION' : 
-                            (currentRejectItem.value.contractMonthlyRent ? 
-                              (currentRejectItem.value.rentalAddress ? 'RENTAL_APPROVAL' : 'RENTAL') : 'EXPENSE'))
+                            (currentRejectItem.value.rentalAddress ? 'RENTAL_PROPOSAL' :
+                            (currentRejectItem.value.contractMonthlyRent ? 'RENTAL' : 'EXPENSE')))
     
     console.log('반려 처리 시작:', { seq: currentRejectItem.value.seq, applicationType, authVal, currentStatus: currentRejectItem.value.approvalStatus })
     
@@ -1132,8 +1004,8 @@ const confirmReject = async () => {
         await rejectExpenseClaimByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
       } else if (applicationType === 'RENTAL') {
         await rejectRentalSupportByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
-      } else if (applicationType === 'RENTAL_APPROVAL') {
-        await rejectRentalApprovalByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
+      } else if (applicationType === 'RENTAL_PROPOSAL') {
+        await rejectRentalProposalByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
       }
     } else if (authVal === 'bb') {
       if (applicationType === 'VACATION') {
@@ -1142,8 +1014,8 @@ const confirmReject = async () => {
         await rejectExpenseClaimByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
       } else if (applicationType === 'RENTAL') {
         await rejectRentalSupportByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
-      } else if (applicationType === 'RENTAL_APPROVAL') {
-        await rejectRentalApprovalByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
+      } else if (applicationType === 'RENTAL_PROPOSAL') {
+        await rejectRentalProposalByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
       }
     } else if (authVal === 'ma') {
       // 관리자는 팀장 또는 본부장 역할 수행 가능
@@ -1154,8 +1026,8 @@ const confirmReject = async () => {
           await rejectExpenseClaimByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
         } else if (applicationType === 'RENTAL') {
           await rejectRentalSupportByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
-        } else if (applicationType === 'RENTAL_APPROVAL') {
-          await rejectRentalApprovalByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
+        } else if (applicationType === 'RENTAL_PROPOSAL') {
+          await rejectRentalProposalByTeamLeader(currentRejectItem.value.seq, rejectionReason.value)
         }
       } else if (currentRejectItem.value.approvalStatus === 'B') {
         if (applicationType === 'VACATION') {
@@ -1164,8 +1036,8 @@ const confirmReject = async () => {
           await rejectExpenseClaimByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
         } else if (applicationType === 'RENTAL') {
           await rejectRentalSupportByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
-        } else if (applicationType === 'RENTAL_APPROVAL') {
-          await rejectRentalApprovalByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
+        } else if (applicationType === 'RENTAL_PROPOSAL') {
+          await rejectRentalProposalByDivisionHead(currentRejectItem.value.seq, rejectionReason.value)
         }
       }
     }
@@ -1176,16 +1048,16 @@ const confirmReject = async () => {
     // 목록 새로고침 (현재 페이지 유지)
     const rejectApplicationType = currentRejectItem.value.applicationType || 
                             (currentRejectItem.value.type ? 'VACATION' : 
-                            (currentRejectItem.value.contractMonthlyRent ? 
-                              (currentRejectItem.value.rentalAddress ? 'RENTAL_APPROVAL' : 'RENTAL') : 'EXPENSE'))
+                            (currentRejectItem.value.rentalAddress ? 'RENTAL_PROPOSAL' :
+                            (currentRejectItem.value.contractMonthlyRent ? 'RENTAL' : 'EXPENSE')))
     if (rejectApplicationType === 'VACATION') {
       await loadVacationList(vacationCurrentPage.value - 1)
     } else if (applicationType === 'EXPENSE') {
       await loadExpenseList(expenseCurrentPage.value - 1)
     } else if (applicationType === 'RENTAL') {
       await loadRentalList(rentalCurrentPage.value - 1)
-    } else if (applicationType === 'RENTAL_APPROVAL') {
-      await loadRentalApprovalList(rentalApprovalCurrentPage.value - 1)
+    } else if (applicationType === 'RENTAL_PROPOSAL') {
+      await loadRentalApprovalList(rentalProposalCurrentPage.value - 1)
     }
     console.log('목록 새로고침 완료')
     
@@ -1517,7 +1389,7 @@ onActivated(async () => {
 }
 
 /* 월세 지원 품의서 모달 스타일 */
-.rental-approval-modal {
+.rental-proposal-modal {
   position: fixed;
   top: 0;
   left: 0;

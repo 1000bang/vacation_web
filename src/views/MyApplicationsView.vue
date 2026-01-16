@@ -37,9 +37,7 @@
                 <td>{{ getVacationTypeName(vacation.type) }}</td>
                 <td>{{ vacation.reason || '-' }}</td>
                 <td>
-                  <span :class="getApprovalStatusClass(vacation.approvalStatus)">
-                    {{ getApprovalStatusName(vacation.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="vacation.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
@@ -51,7 +49,7 @@
                       {{ isDownloading === vacation.seq ? '다운로드 중...' : '다운로드' }}
                     </button>
                     <button
-                      v-if="canDeleteVacation(vacation.approvalStatus)"
+                      v-if="canDelete(vacation.approvalStatus)"
                       @click="handleDeleteVacation(vacation.seq)"
                       class="btn btn-delete btn-small"
                       :disabled="isDeleting === vacation.seq"
@@ -65,25 +63,13 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showVacationPagination" class="pagination">
-          <button 
-            @click="vacationCurrentPage = Math.max(1, vacationCurrentPage - 1)"
-            :disabled="vacationCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ vacationCurrentPage }} / {{ vacationTotalPages }}
-          </span>
-          <button 
-            @click="vacationCurrentPage = Math.min(vacationTotalPages, vacationCurrentPage + 1)"
-            :disabled="vacationCurrentPage === vacationTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="vacationCurrentPage"
+          :total-pages="vacationTotalPages"
+          :show-pagination="showVacationPagination"
+          @prev="vacationCurrentPage = Math.max(1, vacationCurrentPage - 1)"
+          @next="vacationCurrentPage = Math.min(vacationTotalPages, vacationCurrentPage + 1)"
+        />
       </div>
 
       <!-- 개인 비용 신청 목록 (테이블 형식) -->
@@ -117,9 +103,7 @@
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ expense.childCnt }}개</td>
                   <td class="clickable-cell" @click="handleEditExpenseClaim(expense.seq)">{{ formatNumber(expense.totalAmount || 0) }}원</td>
                   <td>
-                    <span :class="getApprovalStatusClass(expense.approvalStatus)">
-                      {{ getApprovalStatusName(expense.approvalStatus) }}
-                    </span>
+                    <StatusBadge :status="expense.approvalStatus" />
                   </td>
                   <td @click.stop>
                     <div class="action-buttons">
@@ -131,7 +115,7 @@
                         {{ isDownloading === expense.seq ? '다운로드 중...' : '다운로드' }}
                       </button>
                       <button
-                        v-if="canDeleteExpenseClaim(expense.approvalStatus)"
+                        v-if="canDelete(expense.approvalStatus)"
                         @click="handleDeleteExpenseClaim(expense.seq)"
                         class="btn btn-delete btn-small"
                         :disabled="isDeleting === expense.seq"
@@ -146,25 +130,13 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showExpensePagination" class="pagination">
-          <button 
-            @click="expenseCurrentPage = Math.max(1, expenseCurrentPage - 1)"
-            :disabled="expenseCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ expenseCurrentPage }} / {{ expenseTotalPages }}
-          </span>
-          <button 
-            @click="expenseCurrentPage = Math.min(expenseTotalPages, expenseCurrentPage + 1)"
-            :disabled="expenseCurrentPage === expenseTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="expenseCurrentPage"
+          :total-pages="expenseTotalPages"
+          :show-pagination="showExpensePagination"
+          @prev="expenseCurrentPage = Math.max(1, expenseCurrentPage - 1)"
+          @next="expenseCurrentPage = Math.min(expenseTotalPages, expenseCurrentPage + 1)"
+        />
       </div>
 
       <!-- 월세 지원 신청 목록 (테이블 형식) -->
@@ -201,9 +173,7 @@
                 <td>{{ formatNumber(rental.billingAmount) }}원</td>
                 <td>{{ formatDate(rental.paymentDate) }}</td>
                 <td>
-                  <span :class="getApprovalStatusClass(rental.approvalStatus)">
-                    {{ getApprovalStatusName(rental.approvalStatus) }}
-                  </span>
+                  <StatusBadge :status="rental.approvalStatus" />
                 </td>
                 <td @click.stop>
                   <div class="action-buttons">
@@ -215,7 +185,7 @@
                       {{ isDownloading === rental.seq ? '다운로드 중...' : '다운로드' }}
                     </button>
                     <button
-                      v-if="canDeleteRentalApplication(rental.approvalStatus)"
+                      v-if="canDelete(rental.approvalStatus)"
                       @click="handleDeleteRentalApplication(rental.seq)"
                       class="btn btn-delete btn-small"
                       :disabled="isDeleting === rental.seq"
@@ -229,25 +199,13 @@
           </table>
         </div>
         <!-- 페이징 버튼 -->
-        <div v-if="showRentalPagination" class="pagination">
-          <button 
-            @click="rentalCurrentPage = Math.max(1, rentalCurrentPage - 1)"
-            :disabled="rentalCurrentPage === 1"
-            class="pagination-btn"
-          >
-            이전
-          </button>
-          <span class="pagination-info">
-            {{ rentalCurrentPage }} / {{ rentalTotalPages }}
-          </span>
-          <button 
-            @click="rentalCurrentPage = Math.min(rentalTotalPages, rentalCurrentPage + 1)"
-            :disabled="rentalCurrentPage === rentalTotalPages"
-            class="pagination-btn"
-          >
-            다음
-          </button>
-        </div>
+        <Pagination
+          :current-page="rentalCurrentPage"
+          :total-pages="rentalTotalPages"
+          :show-pagination="showRentalPagination"
+          @prev="rentalCurrentPage = Math.max(1, rentalCurrentPage - 1)"
+          @next="rentalCurrentPage = Math.min(rentalTotalPages, rentalCurrentPage + 1)"
+        />
       </div>
 
       <!-- 월세 지원 품의 목록 (기존 형식 유지) -->
@@ -286,9 +244,7 @@
               </div>
               <div class="info-row">
                 <span class="label">승인상태:</span>
-                <span :class="getApprovalStatusClass(rental.approvalStatus)">
-                  {{ getApprovalStatusName(rental.approvalStatus) }}
-                </span>
+                <StatusBadge :status="rental.approvalStatus" />
               </div>
             </div>
             <div class="application-actions">
@@ -520,6 +476,11 @@ import {
   type ExpenseClaimDetail
 } from '@/api/user'
 import apiClient from '@/api/axios'
+import { formatDate, formatNumber, formatBillingYyMonth } from '@/utils/formatUtils'
+import { canDelete } from '@/utils/statusUtils'
+import { getVacationTypeName } from '@/utils/vacationUtils'
+import StatusBadge from '@/components/StatusBadge.vue'
+import Pagination from '@/components/Pagination.vue'
 
 const router = useRouter()
 
@@ -633,93 +594,7 @@ watch(rentalCurrentPage, (newPage) => {
   }
 })
 
-// 날짜 포맷팅
-const formatDate = (dateString: string | undefined): string => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}.${month}.${day}`
-}
-
-// 숫자 포맷팅
-const formatNumber = (num: number): string => {
-  return num.toLocaleString('ko-KR')
-}
-
-// 청구 년월 포맷팅 (YYYYMM -> YYYY.MM)
-const formatBillingYyMonth = (billingYyMonth: number): string => {
-  if (!billingYyMonth) return ''
-  const year = Math.floor(billingYyMonth / 100)
-  const month = billingYyMonth % 100
-  return `${year}.${month.toString().padStart(2, '0')}`
-}
-
-// 휴가 구분 한글 변환
-// 승인 상태 한글 변환
-const getApprovalStatusName = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  const statusMap: Record<string, string> = {
-    'A': '요청',
-    'AM': '수정후 재요청',
-    'B': '팀장 승인',
-    'RB': '팀장 반려',
-    'C': '본부장 승인',
-    'RC': '본부장 반려'
-  }
-  return statusMap[actualStatus] || actualStatus
-}
-
-// 승인 상태 스타일 클래스 (반려: 빨간색, 최종승인: 초록색)
-const getApprovalStatusClass = (status: string | undefined | null): string => {
-  // null이면 "A"로 간주 (초기 생성 상태)
-  const actualStatus = status || 'A'
-  // 반려 상태만 빨간색
-  if (actualStatus === 'RB' || actualStatus === 'RC') {
-    return 'status-rejected'
-  }
-  // 최종 승인 상태만 초록색
-  if (actualStatus === 'C') {
-    return 'status-final-approved'
-  }
-  // 나머지는 기본 색상
-  return 'status-default'
-}
-
-// 휴가 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
-const canDeleteVacation = (status: string | undefined | null): boolean => {
-  const actualStatus = status || 'A'
-  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
-}
-
-// 개인 비용 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
-const canDeleteExpenseClaim = (status: string | undefined | null): boolean => {
-  const actualStatus = status || 'A'
-  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
-}
-
-// 월세 지원 신청 삭제 가능 여부 확인 (A, RB, RC만 삭제 가능)
-const canDeleteRentalApplication = (status: string | undefined | null): boolean => {
-  const actualStatus = status || 'A'
-  return actualStatus === 'A' || actualStatus === 'RB' || actualStatus === 'RC'
-}
-
-const getVacationTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    'YEONCHA': '연차',
-    'GYEONGJO': '경조',
-    'CHULSAN': '출산',
-    'GYEOLGEUN': '결근',
-    'BYEONGGA': '병가',
-    'GITA': '기타',
-    'YEBIGUN': '예비군',
-    'AM_HALF': '오전 반차',
-    'PM_HALF': '오후 반차'
-  }
-  return typeMap[type] || type
-}
+// 포맷팅 및 유틸리티 함수는 공통 유틸리티에서 import하여 사용
 
 // 휴가 신청서 다운로드
 const handleDownloadVacation = async (seq: number) => {
@@ -1061,7 +936,7 @@ const saveRentalProposal = async () => {
     // FormData 생성
     const formData = new FormData()
     const jsonBlob = new Blob([JSON.stringify(request)], { type: 'application/json' })
-    formData.append('rentalApprovalRequest', jsonBlob, 'rentalApprovalRequest.json')
+    formData.append('rentalProposalRequest', jsonBlob, 'rentalProposalRequest.json')
     
     // 파일이 있으면 추가
     if (rentalProposalSelectedFile.value) {

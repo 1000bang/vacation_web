@@ -336,6 +336,7 @@ import rentalContractPriceImage from '@/assets/image/help/rental_contract_price.
 import rentalBillingStartDateImage from '@/assets/image/help/rental_billing_startdate.png'
 import rentalBillingPeriodImage from '@/assets/image/help/rental_billing_period.png'
 import rentalPaymentDateImage from '@/assets/image/help/rental_paymentDate.png'
+import { getTodayDate } from '@/utils/formatUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -382,14 +383,7 @@ const closeHelpModal = () => {
   helpModal.isOpen = false
 }
 
-// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
-const getTodayDate = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// getTodayDate는 공통 유틸리티에서 import하여 사용
 
 const rentalForm = reactive({
   requestDate: getTodayDate(),
