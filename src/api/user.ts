@@ -328,6 +328,12 @@ export interface ExpenseSub {
   project?: string
   amount: number
   note?: string
+  createdAt?: string
+  attachment?: {
+    seq: number
+    fileName: string
+    fileSize: number
+  } // 첨부파일 정보
 }
 
 export interface ExpenseItem {
@@ -338,6 +344,12 @@ export interface ExpenseItem {
   project?: string
   amount: number
   note?: string
+  expenseSubSeq?: number // 항목 시퀀스 (수정/조회 시 사용)
+  attachment?: {
+    seq: number
+    fileName: string
+    fileSize: number
+  } // 첨부파일 정보
 }
 
 export interface ExpenseClaimDetail {
@@ -424,6 +436,64 @@ export const downloadExpenseClaim = async (seq: number, applicant?: string): Pro
     blob: response.data,
     filename
   }
+}
+
+/**
+ * 개인비용 항목별 첨부파일 업로드
+ */
+export const uploadExpenseItemFile = async (seq: number, expenseSubSeq: number, file: File): Promise<ApiResponse<any>> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  const response = await apiClient.post<ApiResponse<any>>(
+    `/expense/${seq}/item/${expenseSubSeq}/file`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  )
+  return response.data
+}
+
+/**
+ * 개인비용 항목별 첨부파일 다운로드
+ */
+export const downloadExpenseItemFile = async (seq: number, expenseSubSeq: number): Promise<{ blob: Blob; filename: string }> => {
+  const response = await apiClient.get(`/expense/${seq}/item/${expenseSubSeq}/file`, {
+    responseType: 'blob'
+  })
+  
+  // Content-Disposition 헤더에서 파일명 추출
+  const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
+  
+  let filename = `첨부파일_${expenseSubSeq}`
+  
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    if (filenameMatch && filenameMatch[1]) {
+      filename = filenameMatch[1].replace(/['"]/g, '')
+      try {
+        filename = decodeURIComponent(filename)
+      } catch {
+        // 디코딩 실패 시 그대로 사용
+      }
+    }
+  }
+  
+  return {
+    blob: response.data,
+    filename
+  }
+}
+
+/**
+ * 개인비용 항목별 첨부파일 삭제
+ */
+export const deleteExpenseItemFile = async (seq: number, expenseSubSeq: number): Promise<ApiResponse<any>> => {
+  const response = await apiClient.delete<ApiResponse<any>>(`/expense/${seq}/item/${expenseSubSeq}/file`)
+  return response.data
 }
 
 // 연차 정보 응답 타입

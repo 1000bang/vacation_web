@@ -86,6 +86,62 @@
                   <label>비고</label>
                   <input type="text" v-model="item.note" :disabled="isApprovalMode" />
                 </div>
+                <!-- 첨부파일 -->
+                <div class="form-group full-width">
+                  <label>첨부파일</label>
+                  <div class="file-upload-section">
+                    <!-- 파일 선택 input -->
+                    <div v-if="!isApprovalMode" class="file-input-wrapper">
+                      <input
+                        type="file"
+                        :ref="el => { if (el) fileInputRefs[index] = el as HTMLInputElement }"
+                        @change="(e) => handleExpenseItemFileSelect(e, index)"
+                        accept=".png,.jpg,.jpeg,.pdf"
+                        class="file-input"
+                        :id="`expense-item-file-input-${index}`"
+                      />
+                      <label :for="`expense-item-file-input-${index}`" class="file-input-label">
+                        <span class="file-input-text">파일 선택 (PNG, JPG, PDF, 최대 10MB)</span>
+                      </label>
+                    </div>
+                    
+                    <!-- 선택된 파일 표시 -->
+                    <div v-if="item.selectedFile" class="selected-file">
+                      <span class="file-name">{{ item.selectedFile.name }}</span>
+                      <span class="file-size">({{ formatFileSize(item.selectedFile.size) }})</span>
+                      <button 
+                        v-if="!isApprovalMode" 
+                        type="button" 
+                        @click="removeExpenseItemFile(index)" 
+                        class="btn-remove-file"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                    
+                    <!-- 기존 첨부파일 표시 -->
+                    <div v-if="item.attachment && !item.selectedFile" class="existing-file">
+                      <span class="file-name">{{ item.attachment.fileName }}</span>
+                      <span class="file-size">({{ formatFileSize(item.attachment.fileSize) }})</span>
+                      <button 
+                        v-if="!isApprovalMode" 
+                        type="button" 
+                        @click="downloadExpenseItemFile(index)" 
+                        class="btn-download-file"
+                      >
+                        다운로드
+                      </button>
+                      <button 
+                        v-if="!isApprovalMode" 
+                        type="button" 
+                        @click="deleteExpenseItemFile(index)" 
+                        class="btn-remove-file"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="expense-item-actions" v-if="!isApprovalMode">
                 <button type="button" @click="removeExpenseItem(index)" class="btn btn-danger btn-sm">
@@ -180,12 +236,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { createExpenseClaim, updateExpenseClaim, getExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
+import { createExpenseClaim, updateExpenseClaim, getExpenseClaim, downloadExpenseClaim, type ExpenseClaimRequest, type ExpenseItem } from '@/api/user'
 import { 
   approveExpenseClaimByTeamLeader, 
   rejectExpenseClaimByTeamLeader, 
   approveExpenseClaimByDivisionHead, 
-  rejectExpenseClaimByDivisionHead 
+  rejectExpenseClaimByDivisionHead,
+  uploadExpenseItemFile,
+  downloadExpenseItemFile as downloadExpenseItemFileApi,
+  deleteExpenseItemFile as deleteExpenseItemFileApi
 } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
 import expenseImage from '@/assets/image/help/expense.png'
@@ -240,7 +299,7 @@ const getTodayDate = () => {
 const expenseForm = reactive<{
   requestDate: string
   month: number | null
-  expenseItems: ExpenseItem[]
+  expenseItems: (ExpenseItem & { selectedFile?: File })[]
 }>({
   requestDate: getTodayDate(),
   month: null,
@@ -263,6 +322,8 @@ const user = ref<{ authVal: string; name?: string } | null>(null)
 const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const currentExpenseClaim = ref<any>(null)
+const fileInputRefs = ref<{ [key: number]: HTMLInputElement }>({})
+const uploadingFiles = ref<{ [key: number]: boolean }>({})
 
 // 숫자를 한글 만원 단위로 변환
 const formatKoreanWon = (amount: number): string => {
@@ -379,6 +440,89 @@ const addExpenseItem = () => {
   }
 }
 
+// 파일 크기 포맷팅
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 항목별 파일 선택 처리
+const handleExpenseItemFileSelect = (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    // 파일 크기 검증 (10MB)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert('파일 크기는 10MB를 초과할 수 없습니다.')
+      target.value = ''
+      return
+    }
+    
+    // 파일 확장자 검증
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.pdf']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!allowedExtensions.includes(fileExtension)) {
+      alert('PNG, JPG, PDF 파일만 업로드 가능합니다.')
+      target.value = ''
+      return
+    }
+    
+    expenseForm.expenseItems[index].selectedFile = file
+  }
+}
+
+// 항목별 파일 삭제 (선택된 파일)
+const removeExpenseItemFile = (index: number) => {
+  expenseForm.expenseItems[index].selectedFile = undefined
+  if (fileInputRefs.value[index]) {
+    fileInputRefs.value[index].value = ''
+  }
+}
+
+// 항목별 파일 다운로드
+const downloadExpenseItemFile = async (index: number) => {
+  const item = expenseForm.expenseItems[index]
+  if (!item.expenseSubSeq || !expenseSeq.value) return
+  
+  try {
+    const { blob, filename } = await downloadExpenseItemFileApi(expenseSeq.value, item.expenseSubSeq)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('파일 다운로드 실패:', error)
+    alert('파일 다운로드에 실패했습니다.')
+  }
+}
+
+// 항목별 파일 삭제 (기존 파일)
+const deleteExpenseItemFile = async (index: number) => {
+  const item = expenseForm.expenseItems[index]
+  if (!item.expenseSubSeq || !expenseSeq.value) return
+  
+  if (!confirm('첨부파일을 삭제하시겠습니까?')) {
+    return
+  }
+  
+  try {
+    await deleteExpenseItemFileApi(expenseSeq.value, item.expenseSubSeq)
+    item.attachment = undefined
+    alert('첨부파일이 삭제되었습니다.')
+  } catch (error) {
+    console.error('파일 삭제 실패:', error)
+    alert('파일 삭제에 실패했습니다.')
+  }
+}
+
 // 비용 항목 삭제
 const removeExpenseItem = (index: number) => {
   if (expenseForm.expenseItems.length > 1) {
@@ -417,15 +561,19 @@ const loadExpenseClaimData = async (seq: number) => {
       
       // 비용 항목 목록 채우기
       if (detail.expenseSubList && detail.expenseSubList.length > 0) {
-        expenseForm.expenseItems = detail.expenseSubList.map(sub => ({
-          date: sub.date || '',
-          usageDetail: sub.usageDetail || '',
-          vendor: sub.vendor || '',
-          paymentMethod: sub.paymentMethod || '',
-          project: sub.project || '',
-          amount: sub.amount || 0,
-          note: sub.note || ''
-        }))
+        expenseForm.expenseItems = detail.expenseSubList.map((sub) => {
+          return {
+            date: sub.date || '',
+            usageDetail: sub.usageDetail || '',
+            vendor: sub.vendor || '',
+            paymentMethod: sub.paymentMethod || '',
+            project: sub.project || '',
+            amount: sub.amount || 0,
+            note: sub.note || '',
+            expenseSubSeq: sub.seq,
+            attachment: sub.attachment // 서버에서 이미 첨부파일 정보를 포함하여 전달
+          }
+        })
       }
     }
   } catch (error) {
@@ -631,9 +779,34 @@ const submitExpenseApplication = async () => {
       }))
     }
     
+    let savedSeq: number | null = null
+    
     if (isEditMode.value && expenseSeq.value) {
       // 수정 모드
-      const response = await updateExpenseClaim(expenseSeq.value, request)
+      await updateExpenseClaim(expenseSeq.value, request)
+      savedSeq = expenseSeq.value
+      
+      // 수정 후 항목 목록 다시 조회하여 expenseSubSeq 확인
+      const detailResponse = await getExpenseClaim(expenseSeq.value)
+      if (detailResponse.resultMsg && detailResponse.resultMsg.expenseSubList) {
+        const expenseSubList = detailResponse.resultMsg.expenseSubList
+        // 각 항목의 파일 업로드
+        for (let i = 0; i < expenseForm.expenseItems.length; i++) {
+          const item = expenseForm.expenseItems[i]
+          if (item.selectedFile && expenseSubList[i] && expenseSubList[i].seq) {
+            try {
+              uploadingFiles.value[i] = true
+              await uploadExpenseItemFile(expenseSeq.value, expenseSubList[i].seq, item.selectedFile)
+              item.selectedFile = undefined
+            } catch (error) {
+              console.error(`항목 ${i + 1} 파일 업로드 실패:`, error)
+            } finally {
+              uploadingFiles.value[i] = false
+            }
+          }
+        }
+      }
+      
       alert('수정되었습니다.')
       router.push('/my-applications')
     } else {
@@ -641,11 +814,34 @@ const submitExpenseApplication = async () => {
       const response = await createExpenseClaim(request)
       // 성공 페이지로 리다이렉트 (신청 타입과 seq 전달)
       if (response.resultMsg && response.resultMsg.seq) {
+        savedSeq = response.resultMsg.seq
+        
+        // 신청 후 항목 목록 다시 조회하여 expenseSubSeq 확인
+        const detailResponse = await getExpenseClaim(savedSeq)
+        if (detailResponse.resultMsg && detailResponse.resultMsg.expenseSubList) {
+          const expenseSubList = detailResponse.resultMsg.expenseSubList
+          // 각 항목의 파일 업로드
+          for (let i = 0; i < expenseForm.expenseItems.length; i++) {
+            const item = expenseForm.expenseItems[i]
+            if (item.selectedFile && expenseSubList[i] && expenseSubList[i].seq) {
+              try {
+                uploadingFiles.value[i] = true
+                await uploadExpenseItemFile(savedSeq, expenseSubList[i].seq, item.selectedFile)
+                item.selectedFile = undefined
+              } catch (error) {
+                console.error(`항목 ${i + 1} 파일 업로드 실패:`, error)
+              } finally {
+                uploadingFiles.value[i] = false
+              }
+            }
+          }
+        }
+        
         router.push({
           path: '/application-success',
           query: {
             type: 'expense',
-            seq: response.resultMsg.seq
+            seq: savedSeq
           }
         })
       } else {
@@ -1062,6 +1258,95 @@ const submitExpenseApplication = async () => {
 }
 
 .btn-download:hover:not(:disabled) {
+  background-color: #0f1f88;
+}
+
+/* 파일 업로드 스타일 */
+.file-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-size: 0.9rem;
+}
+
+.file-input-label:hover {
+  background-color: #e9ecef;
+}
+
+.file-input-text {
+  color: #666;
+}
+
+.selected-file,
+.existing-file {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.file-name {
+  flex: 1;
+  color: #333;
+  word-break: break-all;
+}
+
+.file-size {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.btn-remove-file,
+.btn-download-file {
+  padding: 0.25rem 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-remove-file {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-remove-file:hover {
+  background-color: #c82333;
+}
+
+.btn-download-file {
+  background-color: #1226aa;
+  color: white;
+}
+
+.btn-download-file:hover {
   background-color: #0f1f88;
 }
 </style>
