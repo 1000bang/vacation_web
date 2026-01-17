@@ -730,8 +730,18 @@ const fillFormFromRentalSupport = (rentalSupport: any) => {
 }
 
 onMounted(async () => {
-  // 수정 모드인 경우 기존 데이터 로드
-  if (isEditMode.value && rentalSeq.value) {
+  // 사용자 정보 로드 (localStorage에서)
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      user.value = JSON.parse(userStr)
+    } catch (e) {
+      console.error('Failed to parse user data:', e)
+    }
+  }
+  
+  // 수정 모드 또는 승인 모드인 경우 기존 데이터 로드
+  if ((isEditMode.value || isApprovalMode.value) && rentalSeq.value) {
     await loadRentalApplicationData(rentalSeq.value)
   } else {
     // 신청 모드인 경우 신청일자 기준으로 청구월 자동 계산

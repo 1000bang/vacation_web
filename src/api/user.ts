@@ -618,6 +618,8 @@ export interface PendingApproval {
   contractMonthlyRent?: number
   billingAmount?: number
   paymentDate?: string
+  requestDateRental?: string // RENTAL의 requestDate
+  billingYyMonthRental?: number // RENTAL의 billingYyMonth
   // 월세 지원 품의서용
   rentalAddress?: string
   contractStartDate?: string

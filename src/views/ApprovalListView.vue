@@ -187,8 +187,8 @@
                 class="clickable-row"
               >
                 <td>{{ rental.applicant || '-' }}</td>
-                <td>{{ formatDate(rental.requestDate) }}</td>
-                <td>{{ formatBillingYyMonth(rental.billingYyMonth) }}</td>
+                <td>{{ formatDate(rental.requestDateRental) }}</td>
+                <td>{{ formatBillingYyMonth(rental.billingYyMonthRental) }}</td>
                 <td>{{ formatNumber(rental.contractMonthlyRent || 0) }}원</td>
                 <td>{{ formatNumber(rental.billingAmount || 0) }}원</td>
                 <td>{{ formatDate(rental.paymentDate) }}</td>
@@ -469,11 +469,11 @@
             <h4>월세 지원 정보</h4>
             <div class="detail-row">
               <span class="detail-label">신청일:</span>
-              <span class="detail-value">{{ formatDate(selectedApplication.requestDate) }}</span>
+              <span class="detail-value">{{ formatDate(selectedApplication.requestDateRental) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">청구월:</span>
-              <span class="detail-value">{{ formatBillingYyMonth(selectedApplication.billingYyMonth) }}</span>
+              <span class="detail-value">{{ formatBillingYyMonth(selectedApplication.billingYyMonthRental) }}</span>
             </div>
             <div class="detail-row">
               <span class="detail-label">계약 월세:</span>
