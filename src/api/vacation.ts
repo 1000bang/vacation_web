@@ -111,6 +111,7 @@ export const getVacationHistory = async (seq: number): Promise<ApiResponse<Vacat
 
 /**
  * 휴가 신청서 다운로드
+ * 첨부파일이 있으면 ZIP 파일로, 없으면 DOCX 파일로 반환됨
  */
 export const downloadVacationDocument = async (seq: number, applicant?: string): Promise<{ blob: Blob; filename: string }> => {
   const response = await apiClient.get(`/vacation/history/${seq}/download`, {
@@ -120,9 +121,14 @@ export const downloadVacationDocument = async (seq: number, applicant?: string):
   // Content-Disposition 헤더에서 파일명 추출
   const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
   
+  // Content-Type 헤더 확인 (ZIP인지 문서인지 판단)
+  const contentType = response.headers['content-type'] || response.headers['Content-Type'] || ''
+  const isZip = contentType.includes('application/zip') || contentType.includes('zip')
+  
   // 파일명 생성: applicant와 오늘 날짜 사용
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  let filename = `휴가(결무)신청서_${applicant || '신청자'}_${today}.docx`
+  const defaultExtension = isZip ? '.zip' : '.docx'
+  let filename = `휴가(결무)신청서_${applicant || '신청자'}_${today}${defaultExtension}`
   
   if (contentDisposition) {
     const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)

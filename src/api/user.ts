@@ -249,6 +249,7 @@ export const deleteRentalSupportApplication = async (seq: number): Promise<ApiRe
 
 /**
  * 월세 지원 신청서 다운로드 (청구서용)
+ * 첨부파일이 있으면 ZIP 파일로, 없으면 XLSX 파일로 반환됨
  */
 export const downloadRentalSupportApplication = async (seq: number, applicant?: string): Promise<{ blob: Blob; filename: string }> => {
   const response = await apiClient.get(`/rental/application/${seq}/download`, {
@@ -258,9 +259,14 @@ export const downloadRentalSupportApplication = async (seq: number, applicant?: 
   // Content-Disposition 헤더에서 파일명 추출
   const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
   
+  // Content-Type 헤더 확인 (ZIP인지 문서인지 판단)
+  const contentType = response.headers['content-type'] || response.headers['Content-Type'] || ''
+  const isZip = contentType.includes('application/zip') || contentType.includes('zip')
+  
   // 파일명 생성: applicant와 오늘 날짜 사용
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  let filename = `월세지원신청서_${applicant || '신청자'}_${today}.xlsx`
+  const defaultExtension = isZip ? '.zip' : '.xlsx'
+  let filename = `월세지원신청서_${applicant || '신청자'}_${today}${defaultExtension}`
   
   if (contentDisposition) {
     const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
@@ -282,6 +288,7 @@ export const downloadRentalSupportApplication = async (seq: number, applicant?: 
 
 /**
  * 월세 지원 품의서 다운로드
+ * 첨부파일이 있으면 ZIP 파일로, 없으면 DOCX 파일로 반환됨
  */
 export const downloadRentalProposal = async (seq: number, applicant?: string): Promise<{ blob: Blob; filename: string }> => {
   const response = await apiClient.get(`/rental/${seq}/download-proposal`, {
@@ -291,9 +298,14 @@ export const downloadRentalProposal = async (seq: number, applicant?: string): P
   // Content-Disposition 헤더에서 파일명 추출
   const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
   
+  // Content-Type 헤더 확인 (ZIP인지 문서인지 판단)
+  const contentType = response.headers['content-type'] || response.headers['Content-Type'] || ''
+  const isZip = contentType.includes('application/zip') || contentType.includes('zip')
+  
   // 파일명 생성: applicant와 오늘 날짜 사용
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  let filename = `월세지원품의서_${applicant || '신청자'}_${today}.docx`
+  const defaultExtension = isZip ? '.zip' : '.docx'
+  let filename = `월세지원품의서_${applicant || '신청자'}_${today}${defaultExtension}`
   
   if (contentDisposition) {
     const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
@@ -418,6 +430,7 @@ export const deleteExpenseClaim = async (seq: number): Promise<ApiResponse<{ mes
 
 /**
  * 개인 비용 청구서 다운로드
+ * 첨부파일이 있으면 ZIP 파일로, 없으면 XLSX 파일로 반환됨
  */
 export const downloadExpenseClaim = async (seq: number, applicant?: string): Promise<{ blob: Blob; filename: string }> => {
   const response = await apiClient.get(`/expense/${seq}/download`, {
@@ -427,9 +440,14 @@ export const downloadExpenseClaim = async (seq: number, applicant?: string): Pro
   // Content-Disposition 헤더에서 파일명 추출
   const contentDisposition = response.headers['content-disposition'] || response.headers['Content-Disposition']
   
+  // Content-Type 헤더 확인 (ZIP인지 문서인지 판단)
+  const contentType = response.headers['content-type'] || response.headers['Content-Type'] || ''
+  const isZip = contentType.includes('application/zip') || contentType.includes('zip')
+  
   // 파일명 생성: applicant와 오늘 날짜 사용
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  let filename = `개인비용신청서_${applicant || '신청자'}_${today}.xlsx`
+  const defaultExtension = isZip ? '.zip' : '.xlsx'
+  let filename = `개인비용신청서_${applicant || '신청자'}_${today}${defaultExtension}`
   
   if (contentDisposition) {
     const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
