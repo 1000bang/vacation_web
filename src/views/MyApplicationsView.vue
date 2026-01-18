@@ -1674,20 +1674,7 @@ onMounted(async () => {
   }
 }
 
-/* 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
+/* MyApplicationsView 전용 모달 스타일 */
 .expense-detail-modal {
   background: white;
   border-radius: 8px;
@@ -1697,14 +1684,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
 }
 
 .modal-header h2 {
@@ -1726,12 +1705,6 @@ onMounted(async () => {
 
 .modal-close-btn:hover {
   color: #1226aa;
-}
-
-.modal-body {
-  padding: 1.5rem;
-  overflow-y: auto;
-  flex: 1;
 }
 
 .expense-detail-modal .expense-detail-container {
@@ -1872,99 +1845,5 @@ onMounted(async () => {
   background-color: #777;
 }
 
-/* 파일 업로드 스타일 */
-.file-upload-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.file-input-wrapper {
-  position: relative;
-}
-
-.file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-.file-input-label {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background-color: #f8f9fa;
-  border: 2px dashed #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-}
-
-.file-input-label:hover {
-  background-color: #e9ecef;
-  border-color: #1226aa;
-}
-
-.file-input-text {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.selected-file,
-.existing-file {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-
-.file-name {
-  flex: 1;
-  color: #2c3e50;
-  font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-size {
-  color: #666;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.btn-download-file,
-.btn-remove-file {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  flex-shrink: 0;
-}
-
-.btn-download-file {
-  background-color: #1226aa;
-  color: white;
-}
-
-.btn-download-file:hover {
-  background-color: #0f1f8a;
-}
-
-.btn-remove-file {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-remove-file:hover {
-  background-color: #c82333;
-}
 </style>
 

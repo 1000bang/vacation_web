@@ -903,6 +903,7 @@ const submitVacationApplication = async () => {
 </script>
 
 <style scoped>
+/* VacationApplicationView 전용 스타일 */
 .vacation-application-view {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -922,38 +923,9 @@ const submitVacationApplication = async () => {
   gap: 1rem;
 }
 
-.header-section h1 {
-  color: #2c3e50;
-  font-size: 2rem;
-  margin: 0;
-  padding-left: 30px;
-}
-
-.btn-back {
-  padding: 0.5rem 1rem;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
-}
-
-.btn-back:hover {
-  background-color: #5a6268;
-}
-
 .vacation-form-wrapper {
   max-width: 800px;
   margin: 0 auto;
-}
-
-.form-container {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .form-header {
@@ -967,6 +939,9 @@ const submitVacationApplication = async () => {
 .form-container h2 {
   margin: 0;
   color: #2c3e50;
+  width: 100%;
+  border-bottom: 2px solid #1226aa;
+  padding-bottom: 0.5rem;
 }
 
 .vacation-info-header {
@@ -979,80 +954,6 @@ const submitVacationApplication = async () => {
 
 .info-text {
   white-space: nowrap;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: #555;
-}
-
-.required {
-  color: #e74c3c;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #17ccff;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.checkbox-group {
-  margin-top: 0.5rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #555;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #17ccff;
-}
-
-.checkbox-label input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.checkbox-label span {
-  user-select: none;
 }
 
 .vacation-edit-info {
@@ -1155,34 +1056,111 @@ const submitVacationApplication = async () => {
   letter-spacing: 0.5px;
 }
 
-.submit-button {
-  padding: 1rem 2rem;
-  background-color: #1226aa;
-  color: white;
-  border: none;
-  border-radius: 6px;
+/* 연차 정보 섹션 (VacationApplicationView 전용) */
+.vacation-edit-info {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #1226aa;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(18, 38, 170, 0.1);
+  position: relative;
+}
+
+.vacation-edit-info::before {
+  content: '연차 정보';
+  display: block;
   font-size: 1rem;
+  font-weight: 700;
+  color: #1226aa;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #1226aa;
+}
+
+.edit-info-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid rgba(18, 38, 170, 0.1);
+  transition: background-color 0.2s;
+}
+
+.edit-info-row:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.edit-info-row:last-child {
+  border-bottom: none;
+}
+
+.edit-info-label {
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  min-width: 130px;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
 }
 
-.submit-button:hover:not(:disabled) {
-  background-color: #0f1f88;
+.edit-info-input {
+  padding: 0.625rem 0.875rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  text-align: right;
+  width: 140px;
+  background-color: white;
+  transition: all 0.3s;
+  font-weight: 600;
+  color: #1226aa;
+  margin-left: auto;
 }
 
-.submit-button:disabled {
-  opacity: 0.6;
+.edit-info-input:disabled {
+  background-color: #f5f5f5;
+  color: #666;
   cursor: not-allowed;
+  opacity: 0.8;
+  border-color: #ccc;
 }
 
+.edit-info-input:focus {
+  outline: none;
+  border-color: #17ccff;
+  box-shadow: 0 0 0 4px rgba(23, 204, 255, 0.15);
+  background-color: #f0f9ff;
+  transform: scale(1.02);
+}
+
+.edit-info-input:focus:disabled {
+  border-color: #ccc;
+  box-shadow: none;
+  background-color: #f5f5f5;
+  transform: none;
+}
+
+.edit-info-input:hover:not(:disabled) {
+  border-color: #1226aa;
+}
+
+.edit-info-unit {
+  color: #1226aa;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-width: 24px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+/* 모바일 반응형 (VacationApplicationView 전용) */
 @media (max-width: 768px) {
   .vacation-application-view {
     padding: 1rem;
-  }
-
-  .form-container {
-    padding: 1.5rem;
   }
 
   .vacation-edit-info {
@@ -1253,243 +1231,6 @@ const submitVacationApplication = async () => {
     font-size: 0.8rem;
     min-width: 20px;
   }
-}
-
-/* 결재 모드 스타일 */
-.approval-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.approval-actions .btn {
-  flex: 1;
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-approve {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-approve:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.btn-reject {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-reject:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-.btn-download {
-  background-color: #1226aa;
-  color: white;
-}
-
-.btn-download:hover:not(:disabled) {
-  background-color: #0f1f88;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.rejection-reason-group {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #dc3545;
-}
-
-.rejection-label {
-  color: #dc3545;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.rejection-reason-box {
-  background-color: #fff5f5;
-  border: 1px solid #fecaca;
-  border-radius: 4px;
-  padding: 1rem;
-  color: #991b1b;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.6;
-}
-
-/* 반려 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 1rem 0;
-  color: #2c3e50;
-}
-
-.reject-reason-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  resize: vertical;
-  margin-bottom: 1.5rem;
-}
-
-.reject-reason-input:focus {
-  outline: none;
-  border-color: #17ccff;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.modal-actions .btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-cancel {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-cancel:hover {
-  background-color: #5a6268;
-}
-
-/* 파일 업로드 스타일 */
-.file-upload-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.file-input-wrapper {
-  position: relative;
-}
-
-.file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-.file-input-label {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background-color: #f8f9fa;
-  border: 2px dashed #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-align: center;
-}
-
-.file-input-label:hover {
-  background-color: #e9ecef;
-  border-color: #1226aa;
-}
-
-.file-input-text {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.selected-file,
-.existing-file {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-
-.file-name {
-  flex: 1;
-  color: #2c3e50;
-  font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-size {
-  color: #666;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.btn-download-file,
-.btn-remove-file {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  flex-shrink: 0;
-}
-
-.btn-download-file {
-  background-color: #1226aa;
-  color: white;
-}
-
-.btn-download-file:hover {
-  background-color: #0f1f8a;
-}
-
-.btn-remove-file {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-remove-file:hover {
-  background-color: #c82333;
 }
 </style>
 

@@ -1190,23 +1190,11 @@ onActivated(async () => {
 </script>
 
 <style scoped>
+/* ApprovalListView 전용 스타일 */
 .approval-list-view {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 2rem;
-}
-
-.header-section {
-  max-width: 1200px;
-  margin: 0 auto 2rem;
-  text-align: left;
-}
-
-.header-section h1 {
-  color: #2c3e50;
-  font-size: 2rem;
-  margin: 0;
-  padding-left: 30px;
 }
 
 .applications-container {
@@ -1290,52 +1278,13 @@ onActivated(async () => {
   min-width: calc(2 * (0.4rem * 2 + 0.85rem * 3) + 0.5rem);
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
 .btn-small {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
 }
 
-.btn-approve {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-approve:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.btn-reject {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-reject:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
 .btn-download {
-  background-color: #1226aa;
-  color: white;
   min-width: calc(2 * (0.4rem * 2 + 0.8rem * 2 + 2.5rem) + 0.5rem);
-}
-
-.btn-download:hover:not(:disabled) {
-  background-color: #0f1f88;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* 승인 상태 스타일 */
@@ -1475,22 +1424,6 @@ onActivated(async () => {
   flex-shrink: 0;
 }
 
-.btn-download-file {
-  padding: 0.4rem 0.8rem;
-  background-color: #1226aa;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  flex-shrink: 0;
-}
-
-.btn-download-file:hover {
-  background-color: #0f1f8a;
-}
-
 .rental-detail-content {
   margin-top: 0;
 }
@@ -1546,34 +1479,10 @@ onActivated(async () => {
   }
 }
 
-/* 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 8px;
-  padding: 2rem;
-  max-width: 500px;
+/* ApprovalListView 전용 모달 스타일 */
+.detail-modal {
+  max-width: 600px;
   width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: #2c3e50;
 }
 
 .rejection-textarea {
@@ -1585,115 +1494,6 @@ onActivated(async () => {
   font-family: inherit;
   resize: vertical;
   box-sizing: border-box;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.btn-cancel {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-cancel:hover {
-  background-color: #5a6268;
-}
-
-.btn-confirm {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-confirm:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-/* 상세 모달 스타일 */
-.detail-modal {
-  max-width: 600px;
-  width: 90%;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #1226aa;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #1226aa;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #999;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  color: #333;
-}
-
-.modal-body {
-  margin-bottom: 1.5rem;
-}
-
-.detail-section {
-  margin-bottom: 1.5rem;
-}
-
-.detail-section h4 {
-  margin-bottom: 1rem;
-  color: #1226aa;
-  font-size: 1.1rem;
-}
-
-.detail-row {
-  display: flex;
-  margin-bottom: 0.75rem;
-  align-items: flex-start;
-}
-
-.detail-label {
-  font-weight: 600;
-  color: #555;
-  min-width: 100px;
-  margin-right: 1rem;
-}
-
-.detail-value {
-  color: #333;
-  flex: 1;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.modal-footer .btn {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
 }
 
 @media (max-width: 768px) {
@@ -1747,10 +1547,6 @@ onActivated(async () => {
   .btn-download:disabled {
     opacity: 0.6 !important;
     background-color: #6c757d !important;
-  }
-
-  .modal-content {
-    padding: 1.5rem;
   }
 }
 </style>

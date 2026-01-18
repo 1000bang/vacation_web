@@ -124,7 +124,6 @@
                       <span class="file-name">{{ item.attachment.fileName }}</span>
                       <span class="file-size">({{ formatFileSize(item.attachment.fileSize) }})</span>
                       <button 
-                        v-if="!isApprovalMode" 
                         type="button" 
                         @click="downloadExpenseItemFile(index)" 
                         class="btn-download-file"
@@ -858,16 +857,11 @@ const submitExpenseApplication = async () => {
 </script>
 
 <style scoped>
+/* ExpenseApplicationView 전용 스타일 */
 .expense-application-view {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 2rem;
-}
-
-.header-section {
-  max-width: 1200px;
-  margin: 0 auto 2rem;
-  text-align: left;
 }
 
 .header-title-wrapper {
@@ -877,108 +871,11 @@ const submitExpenseApplication = async () => {
   gap: 1rem;
 }
 
-.header-section h1 {
-  color: #2c3e50;
-  font-size: 2rem;
-  margin: 0;
-  padding-left: 30px;
-}
-
-.btn-back {
-  padding: 0.5rem 1rem;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
-}
-
-.btn-back:hover {
-  background-color: #5a6268;
-}
-
-.form-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.form-container {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .form-container h2 {
   margin-bottom: 1.5rem;
   color: #1226aa;
   border-bottom: 2px solid #1226aa;
   padding-bottom: 0.5rem;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: #333;
-}
-
-.required {
-  color: #e74c3c;
-}
-
-.form-group input,
-.form-group select {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #17ccff;
-  box-shadow: 0 0 0 3px rgba(23, 204, 255, 0.1);
-}
-
-.department-select-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.department-select {
-  flex: 1;
-}
-
-.department-select:disabled {
-  background-color: #f5f5f5;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.input-with-unit {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.unit-text-below {
-  font-size: 0.875rem;
-  color: #666;
 }
 
 .expense-items-section {
@@ -1056,68 +953,6 @@ const submitExpenseApplication = async () => {
   margin-top: 1rem;
 }
 
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #5a6268;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-danger:hover {
-  background-color: #c82333;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-}
-
-.form-actions {
-  margin-top: 2rem;
-}
-
-.submit-button {
-  padding: 1rem 2rem;
-  background-color: #1226aa;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  width: 100%;
-}
-
-.submit-button:hover:not(:disabled) {
-  background-color: #0f1f88;
-}
-
-.submit-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 @media (max-width: 768px) {
   .expense-application-view {
@@ -1137,211 +972,5 @@ const submitExpenseApplication = async () => {
   }
 }
 
-/* 결재 모드 스타일 */
-.approval-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.approval-actions .btn {
-  flex: 1;
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-approve {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-approve:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.btn-reject {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-reject:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* 반려 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.modal-content h3 {
-  margin: 0 0 1rem 0;
-  color: #2c3e50;
-}
-
-.reject-reason-input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  resize: vertical;
-  margin-bottom: 1.5rem;
-}
-
-.reject-reason-input:focus {
-  outline: none;
-  border-color: #17ccff;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-
-.modal-actions .btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-cancel {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-cancel:hover {
-  background-color: #5a6268;
-}
-
-.btn-download {
-  background-color: #1226aa;
-  color: white;
-}
-
-.btn-download:hover:not(:disabled) {
-  background-color: #0f1f88;
-}
-
-/* 파일 업로드 스타일 */
-.file-upload-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.file-input-wrapper {
-  position: relative;
-}
-
-.file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-.file-input-label {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  font-size: 0.9rem;
-}
-
-.file-input-label:hover {
-  background-color: #e9ecef;
-}
-
-.file-input-text {
-  color: #666;
-}
-
-.selected-file,
-.existing-file {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.file-name {
-  flex: 1;
-  color: #333;
-  word-break: break-all;
-}
-
-.file-size {
-  color: #666;
-  font-size: 0.85rem;
-}
-
-.btn-remove-file,
-.btn-download-file {
-  padding: 0.25rem 0.75rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-remove-file {
-  background-color: #dc3545;
-  color: white;
-}
-
-.btn-remove-file:hover {
-  background-color: #c82333;
-}
-
-.btn-download-file {
-  background-color: #1226aa;
-  color: white;
-}
-
-.btn-download-file:hover {
-  background-color: #0f1f88;
-}
 </style>
 

@@ -178,23 +178,5 @@ onMounted(() => {
   color: #999;
 }
 
-@media (max-width: 768px) {
-  .user-management-view {
-    padding: 1rem;
-  }
-
-  .user-management-container {
-    padding: 1rem;
-  }
-
-  .user-table {
-    font-size: 0.85rem;
-  }
-
-  .user-table th,
-  .user-table td {
-    padding: 0.5rem;
-  }
-}
 </style>
 

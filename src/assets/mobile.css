@@ -1,0 +1,153 @@
+/* ============================================
+   모바일 반응형 스타일
+   ============================================ */
+
+/* 기본 모바일 스타일 (768px 이하) */
+@media (max-width: 768px) {
+  .header-section {
+    padding: 1rem;
+  }
+
+  .header-section h1 {
+    font-size: 1.5rem;
+    padding-left: 0;
+  }
+
+  .form-container {
+    padding: 1.5rem;
+  }
+
+  .form-container h2 {
+    font-size: 1.25rem;
+  }
+
+  .department-select-group {
+    flex-direction: column;
+  }
+
+  .approval-actions {
+    flex-direction: column;
+  }
+
+  .approval-actions .btn {
+    width: 100%;
+  }
+
+  .modal-content {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .btn-small {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  /* 모바일에서 버튼 색상 명확하게 표시 */
+  .btn-approve {
+    background-color: #28a745 !important;
+    color: white !important;
+  }
+
+  .btn-reject {
+    background-color: #dc3545 !important;
+    color: white !important;
+  }
+
+  .btn-download {
+    background-color: #1226aa !important;
+    color: white !important;
+  }
+
+  .btn-approve:disabled,
+  .btn-reject:disabled,
+  .btn-download:disabled {
+    opacity: 0.6 !important;
+    background-color: #6c757d !important;
+  }
+
+  /* 테이블 가로 스크롤 */
+  .table-container,
+  .user-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+  }
+
+  .data-table,
+  .user-table {
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+
+  .data-table th,
+  .data-table td,
+  .user-table th,
+  .user-table td {
+    padding: 0.6rem 0.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* 작은 모바일 화면 (480px 이하) */
+@media (max-width: 480px) {
+  .header-section {
+    padding: 0.75rem;
+  }
+
+  .header-section h1 {
+    font-size: 1.25rem;
+  }
+
+  .form-container {
+    padding: 1rem;
+  }
+
+  .form-container h2 {
+    font-size: 1.1rem;
+  }
+
+  .modal-content {
+    padding: 1rem;
+    max-width: 98%;
+  }
+
+  .modal-header {
+    padding: 0.75rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .approval-actions .btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .detail-label {
+    min-width: auto;
+    font-weight: 600;
+  }
+}
