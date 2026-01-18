@@ -82,6 +82,21 @@
             <small v-if="calculatedVacationDays > 0" class="form-hint">
               시작일과 종료일 기준 자동 계산값: {{ calculatedVacationDays }}일
             </small>
+            
+            <!-- 연차 차감 체크박스 -->
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="vacationForm.isCountedAsUsedVacation"
+                  :disabled="isApprovalMode || isCountedAsUsedVacationDisabled"
+                />
+                <span>연차 차감</span>
+              </label>
+              <small v-if="isCountedAsUsedVacationDisabled" class="form-hint">
+                연차, 오전반차, 오후반차는 연차 차감이 필수입니다.
+              </small>
+            </div>
             <!-- 수정 모드: 신청 당시 연차 정보 표시 (읽기 전용) -->
             <div v-if="isEditMode && currentVacation" class="vacation-edit-info">
               <div class="edit-info-row">
@@ -109,10 +124,10 @@
                 <span class="edit-info-unit">일</span>
               </div>
               <div class="edit-info-row">
-                <label class="edit-info-label">신청 연차 일수:</label>
+                <label class="edit-info-label">사용 연차:</label>
                 <input
                   type="number"
-                  v-model.number="vacationForm.requestedVacationDays"
+                  v-model.number="vacationForm.usedVacationDays"
                   step="0.5"
                   min="0"
                   class="edit-info-input"
@@ -141,8 +156,8 @@
           </div>
 
           <!-- 첨부파일 -->
-          <div class="form-group">
-            <label>첨부파일</label>
+          <div v-if="selectedFile || existingAttachment || !isApprovalMode" class="form-group">
+            <label v-if="selectedFile || existingAttachment || !isApprovalMode">첨부파일</label>
             <div class="file-upload-section">
               <!-- 파일 선택 input -->
               <div v-if="!isApprovalMode" class="file-input-wrapper">
@@ -305,9 +320,11 @@ const vacationForm = ref({
   vacationType: '',
   requestedVacationDays: 0,
   reason: '',
+  isCountedAsUsedVacation: true, // 기본값: 체크됨
   // 수정 모드용 연차 정보
   annualVacationDays: 0,
   previousRemainingDays: 0,
+  usedVacationDays: 0, // 사용 연차
   remainingVacationDays: 0
 })
 
@@ -429,6 +446,13 @@ const vacationTypeMap: Record<string, string> = {
   'PM_HALF': '오후 반차'
 }
 
+// 연차 차감 체크박스 disabled 여부 계산
+const isCountedAsUsedVacationDisabled = computed(() => {
+  const type = vacationForm.value.vacationType
+  // 연차, 오전반차, 오후반차는 항상 연차 차감 (disabled)
+  return type === 'YEONCHA' || type === 'AM_HALF' || type === 'PM_HALF'
+})
+
 // 휴가 구분이 변경될 때 사유 자동 입력 및 신청연차일수 설정
 watch(() => vacationForm.value.vacationType, (newType) => {
   if (newType && vacationTypeMap[newType]) {
@@ -438,15 +462,26 @@ watch(() => vacationForm.value.vacationType, (newType) => {
     if (newType === 'AM_HALF' || newType === 'PM_HALF') {
       vacationForm.value.requestedVacationDays = 0.5
     }
+    
+    // 연차, 오전반차, 오후반차는 항상 연차 차감 체크
+    if (newType === 'YEONCHA' || newType === 'AM_HALF' || newType === 'PM_HALF') {
+      vacationForm.value.isCountedAsUsedVacation = true
+    }
   } else if (!newType) {
     vacationForm.value.reason = ''
   }
 })
 
-// 수정 모드에서 신청연차일수가 변경되면 잔여연차일수 자동 계산
-watch(() => vacationForm.value.requestedVacationDays, (newValue) => {
+// 연차 차감 여부나 신청연차일수가 변경되면 사용연차 계산
+watch([() => vacationForm.value.isCountedAsUsedVacation, () => vacationForm.value.requestedVacationDays], ([isCounted, requestedDays]) => {
+  // 연차 차감이 체크되어 있으면 신청연차일수, 아니면 0
+  vacationForm.value.usedVacationDays = isCounted ? (requestedDays || 0) : 0
+}, { immediate: false })
+
+// 수정 모드에서 사용연차가 변경되면 잔여연차일수 자동 계산
+watch(() => vacationForm.value.usedVacationDays, (newValue) => {
   if (isEditMode.value && vacationForm.value.previousRemainingDays != null) {
-    // 잔여 연차 = 직전 잔여 연차 - 신청 연차 일수
+    // 잔여 연차 = 직전 잔여 연차 - 사용 연차
     vacationForm.value.remainingVacationDays = vacationForm.value.previousRemainingDays - (newValue || 0)
   }
 }, { immediate: false })
@@ -512,10 +547,14 @@ const loadVacationData = async (seq: number) => {
       // 연차 정보도 폼에 로드
       vacationForm.value.annualVacationDays = vacation.annualVacationDays || 0
       vacationForm.value.previousRemainingDays = vacation.previousRemainingDays || 0
+      vacationForm.value.usedVacationDays = vacation.usedVacationDays || 0
       vacationForm.value.remainingVacationDays = vacation.remainingVacationDays || 0
       
       // requestedVacationDays를 먼저 설정 (watch가 실행되지 않도록)
       vacationForm.value.requestedVacationDays = vacation.period
+      
+      // 연차 차감 여부 설정 (usedVacationDays가 0이면 false, 아니면 true)
+      vacationForm.value.isCountedAsUsedVacation = vacation.usedVacationDays !== undefined && vacation.usedVacationDays > 0
       
       // startDate와 endDate를 나중에 설정 (이때 watch가 실행되지만 requestedVacationDays는 이미 설정됨)
       vacationForm.value.startDate = vacation.startDate
@@ -798,7 +837,8 @@ const submitVacationApplication = async () => {
       endDate: vacationForm.value.endDate,
       vacationType: vacationForm.value.vacationType,
       period: vacationForm.value.requestedVacationDays,
-      reason: vacationForm.value.reason || ''
+      reason: vacationForm.value.reason || '',
+      isCountedAsUsedVacation: vacationForm.value.isCountedAsUsedVacation
     }
     
     // 수정 모드용 연차 정보 추가
@@ -984,6 +1024,35 @@ const submitVacationApplication = async () => {
   margin-top: 0.25rem;
   font-size: 0.875rem;
   color: #666;
+}
+
+.checkbox-group {
+  margin-top: 0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #555;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #17ccff;
+}
+
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checkbox-label span {
+  user-select: none;
 }
 
 .vacation-edit-info {

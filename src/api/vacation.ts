@@ -9,6 +9,7 @@ export interface VacationRequest {
   period?: number // API 요청용
   requestedVacationDays?: number // 프론트엔드 폼용 (period로 변환됨)
   reason?: string
+  isCountedAsUsedVacation?: boolean // 연차 차감 여부
   // 수정 모드용 연차 정보 (선택적)
   annualVacationDays?: number
   previousRemainingDays?: number
@@ -28,6 +29,7 @@ export interface VacationHistory {
   applicant?: string
   annualVacationDays?: number
   previousRemainingDays?: number
+  usedVacationDays?: number // 사용 연차
   remainingVacationDays?: number
   approvalStatus?: string
 }
@@ -158,7 +160,10 @@ export const updateVacation = async (seq: number, vacationRequest: VacationReque
     endDate: vacationRequest.endDate,
     vacationType: vacationRequest.vacationType,
     period: vacationRequest.requestedVacationDays,
-    reason: vacationRequest.reason || ''
+    reason: vacationRequest.reason || '',
+    isCountedAsUsedVacation: vacationRequest.isCountedAsUsedVacation !== undefined 
+      ? vacationRequest.isCountedAsUsedVacation 
+      : true // 기본값: true
   }
   // 수정 모드용 연차 정보가 있으면 포함
   if (vacationRequest.annualVacationDays !== undefined) {

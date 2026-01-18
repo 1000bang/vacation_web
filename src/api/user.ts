@@ -605,6 +605,7 @@ export interface PendingApproval {
   startDate?: string
   endDate?: string
   period?: number
+  usedVacationDays?: number // 사용 연차
   type?: string
   reason?: string
   approvalStatus: string | null

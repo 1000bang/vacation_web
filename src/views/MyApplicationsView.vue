@@ -20,6 +20,7 @@
                 <th>일수</th>
                 <th>구분</th>
                 <th>사유</th>
+                <th>사용연차</th>
                 <th>승인상태</th>
                 <th>작업</th>
               </tr>
@@ -36,6 +37,7 @@
                 <td>{{ vacation.period }}일</td>
                 <td>{{ getVacationTypeName(vacation.type) }}</td>
                 <td>{{ vacation.reason || '-' }}</td>
+                <td>{{ (vacation.usedVacationDays || 0) }}일</td>
                 <td>
                   <StatusBadge :status="vacation.approvalStatus" />
                 </td>
