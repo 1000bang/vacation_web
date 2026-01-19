@@ -459,8 +459,6 @@ import { ref, onMounted, computed, watch, reactive } from 'vue'
 import {
   getUserInfo,
   getRentalSupportList,
-  createRentalSupport,
-  updateRentalSupport,
   deleteRentalSupport,
   getUserVacationInfo,
   updateVacationInfo,
@@ -475,9 +473,8 @@ import propPeriodImage from '@/assets/image/help/prop_period.png'
 import propAmountImage from '@/assets/image/help/prop_amount.png'
 import propBillingStartImage from '@/assets/image/help/prop_billingStart.png'
 import apiClient from '@/api/axios'
-import { formatDate, formatNumber, getTodayDate } from '@/utils/formatUtils'
+import { formatDate, formatNumber } from '@/utils/formatUtils'
 import { getApprovalStatusName, getApprovalStatusClass } from '@/utils/statusUtils'
-import StatusBadge from '@/components/StatusBadge.vue'
 import { getSignature, deleteSignature } from '@/api/user'
 
 const userInfo = ref<UserInfoResponse | null>(null)
@@ -931,7 +928,7 @@ const saveRentalSupport = async () => {
       })
       alert('수정되었습니다.')
     } else {
-      const response = await apiClient.post('/rental', formData, {
+      await apiClient.post('/rental', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -997,9 +994,6 @@ const loadSignature = async () => {
       if (response.resultMsg.hasSignature && response.resultMsg.signatureUrl) {
         // axios를 사용하여 인증 헤더 포함하여 이미지 받기
         try {
-          const baseURL = apiClient.defaults.baseURL || ''
-          const fullUrl = baseURL + response.resultMsg.signatureUrl
-          
           // URL에서 실제 경로 추출 (예: /api/user/download/signature/1_signature.png)
           const urlPath = response.resultMsg.signatureUrl
           

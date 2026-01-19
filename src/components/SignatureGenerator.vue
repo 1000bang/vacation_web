@@ -150,6 +150,24 @@ const updatePreview = async () => {
   } catch (error: any) {
     console.error('서명 미리보기 생성 실패:', error)
     previewImageUrl.value = ''
+    
+    // 404 또는 400 에러인 경우 alert 표시
+    if (error.response?.status === 404 || error.response?.status === 400) {
+      // 에러 메시지가 Blob으로 반환된 경우 텍스트로 변환
+      if (error.response?.data instanceof Blob) {
+        error.response.data.text().then((errorText: string) => {
+          if (errorText.includes('찾을 수 없습니다') || errorText.includes('사용할 수 없는')) {
+            alert('해당 폰트를 찾을 수 없습니다.')
+          } else {
+            alert('해당 폰트를 찾을 수 없습니다.')
+          }
+        }).catch(() => {
+          alert('해당 폰트를 찾을 수 없습니다.')
+        })
+      } else {
+        alert('해당 폰트를 찾을 수 없습니다.')
+      }
+    }
   } finally {
     isGenerating.value = false
   }

@@ -471,7 +471,6 @@ import {
   downloadExpenseClaim,
   downloadRentalSupportApplication,
   downloadRentalProposal,
-  updateRentalSupport,
   getRentalSupport,
   type RentalSupport,
   type ExpenseClaim,
