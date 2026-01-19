@@ -527,18 +527,22 @@ import {
   rejectVacationByTeamLeader,
   approveVacationByDivisionHead,
   rejectVacationByDivisionHead,
+  approveVacationByMaster,
   approveExpenseClaimByTeamLeader,
   rejectExpenseClaimByTeamLeader,
   approveExpenseClaimByDivisionHead,
   rejectExpenseClaimByDivisionHead,
+  approveExpenseClaimByMaster,
   approveRentalSupportByTeamLeader,
   rejectRentalSupportByTeamLeader,
   approveRentalSupportByDivisionHead,
   rejectRentalSupportByDivisionHead,
+  approveRentalSupportByMaster,
   approveRentalProposalByTeamLeader,
   rejectRentalProposalByTeamLeader,
   approveRentalProposalByDivisionHead,
   rejectRentalProposalByDivisionHead,
+  approveRentalProposalByMaster,
   downloadExpenseClaim,
   downloadRentalSupportApplication,
   downloadRentalProposal,
@@ -613,14 +617,14 @@ const canApprove = (status: string | undefined | null): boolean => {
     return actualStatus === 'A' || actualStatus === 'AM'
   }
   
-  // 본부장: B 상태만 승인 가능
+  // 본부장: B 상태만 승인 가능 (C 상태에서는 승인 불가)
   if (authVal === 'bb') {
     return actualStatus === 'B'
   }
   
-  // 관리자: 모든 상태 승인 가능 (필요시)
+  // 관리자: A, AM, B, C 상태 승인 가능 (C는 최종 승인)
   if (authVal === 'ma') {
-    return actualStatus === 'A' || actualStatus === 'AM' || actualStatus === 'B'
+    return actualStatus === 'A' || actualStatus === 'AM' || actualStatus === 'B' || actualStatus === 'C'
   }
   
   return false
@@ -639,14 +643,14 @@ const canReject = (status: string | undefined | null): boolean => {
     return actualStatus === 'A' || actualStatus === 'AM'
   }
   
-  // 본부장: B 상태만 반려 가능
+  // 본부장: B 상태만 반려 가능 (C 상태에서는 반려 불가)
   if (authVal === 'bb') {
     return actualStatus === 'B'
   }
   
-  // 관리자: 모든 상태 반려 가능 (필요시)
+  // 관리자: A, AM, B, C 상태 반려 가능
   if (authVal === 'ma') {
-    return actualStatus === 'A' || actualStatus === 'AM' || actualStatus === 'B'
+    return actualStatus === 'A' || actualStatus === 'AM' || actualStatus === 'B' || actualStatus === 'C'
   }
   
   return false
@@ -906,9 +910,10 @@ const handleApprove = async (application: PendingApproval | null) => {
         await approveRentalProposalByDivisionHead(application.seq)
       }
     } else if (authVal === 'ma') {
-      // 관리자는 팀장 또는 본부장 역할 수행 가능
+      // 관리자는 팀장, 본부장 역할 수행 가능 또는 최종 승인
       const status = application.approvalStatus || 'A'
       if (status === 'A' || status === 'AM') {
+        // 팀장 역할
         if (applicationType === 'VACATION') {
           await approveVacationByTeamLeader(application.seq)
         } else if (applicationType === 'EXPENSE') {
@@ -919,6 +924,7 @@ const handleApprove = async (application: PendingApproval | null) => {
           await approveRentalProposalByTeamLeader(application.seq)
         }
       } else if (status === 'B') {
+        // 본부장 역할
         if (applicationType === 'VACATION') {
           await approveVacationByDivisionHead(application.seq)
         } else if (applicationType === 'EXPENSE') {
@@ -927,6 +933,17 @@ const handleApprove = async (application: PendingApproval | null) => {
           await approveRentalSupportByDivisionHead(application.seq)
         } else if (applicationType === 'RENTAL_PROPOSAL') {
           await approveRentalProposalByDivisionHead(application.seq)
+        }
+      } else if (status === 'C') {
+        // 최종 승인
+        if (applicationType === 'VACATION') {
+          await approveVacationByMaster(application.seq)
+        } else if (applicationType === 'EXPENSE') {
+          await approveExpenseClaimByMaster(application.seq)
+        } else if (applicationType === 'RENTAL') {
+          await approveRentalSupportByMaster(application.seq)
+        } else if (applicationType === 'RENTAL_PROPOSAL') {
+          await approveRentalProposalByMaster(application.seq)
         }
       }
     }

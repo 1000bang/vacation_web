@@ -793,11 +793,118 @@ export const approveRentalProposalByDivisionHead = async (seq: number): Promise<
 }
 
 /**
+ * 휴가 신청 최종 승인 (관리자)
+ */
+export const approveVacationByMaster = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/vacation/${seq}/approve/master`)
+  return response.data
+}
+
+/**
+ * 개인 비용 청구 최종 승인 (관리자)
+ */
+export const approveExpenseClaimByMaster = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/expense/${seq}/approve/master`)
+  return response.data
+}
+
+/**
+ * 월세 지원 신청 최종 승인 (관리자)
+ */
+export const approveRentalSupportByMaster = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental/${seq}/approve/master`)
+  return response.data
+}
+
+/**
+ * 월세 품의서 최종 승인 (관리자)
+ */
+export const approveRentalProposalByMaster = async (seq: number): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/approve/master`)
+  return response.data
+}
+
+/**
  * 월세 품의서 반려 (본부장)
  */
 export const rejectRentalProposalByDivisionHead = async (seq: number, rejectionReason: string): Promise<ApiResponse<{ message: string }>> => {
   const response = await apiClient.post<ApiResponse<{ message: string }>>(`/approval/rental-proposal/${seq}/reject/division-head`, {
     rejectionReason
   })
+  return response.data
+}
+
+// 서명 관련 타입
+export interface SignatureResponse {
+  signatureUrl: string
+  hasSignature: boolean
+}
+
+export interface FontInfo {
+  name: string
+  file: string
+}
+
+export interface FontsResponse {
+  fonts: FontInfo[]
+}
+
+/**
+ * 서명 생성/업로드 API
+ * @param signatureFile 서명 이미지 파일 (PNG, 선택)
+ * @param fontType 폰트 타입 (선택, 폰트 방식인 경우)
+ * @param userName 사용자 이름 (선택, 폰트 방식인 경우)
+ */
+export const uploadSignature = async (
+  signatureFile?: File,
+  fontType?: string,
+  userName?: string
+): Promise<ApiResponse<{ message: string }>> => {
+  const formData = new FormData()
+  
+  if (signatureFile) {
+    // 방법 1: 직접 업로드한 이미지 파일
+    formData.append('signatureImage', signatureFile)
+  } else if (fontType && userName) {
+    // 방법 2: 폰트로 서명 생성
+    formData.append('fontType', fontType)
+    formData.append('userName', userName)
+  } else {
+    throw new Error('서명 이미지 파일 또는 폰트 타입과 사용자 이름을 제공해주세요.')
+  }
+  
+  const response = await apiClient.post<ApiResponse<{ message: string }>>(
+    '/user/signature',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  )
+  return response.data
+}
+
+/**
+ * 서명 조회 API
+ */
+export const getSignature = async (): Promise<ApiResponse<SignatureResponse>> => {
+  const response = await apiClient.get<ApiResponse<SignatureResponse>>('/user/signature')
+  return response.data
+}
+
+/**
+ * 서명 삭제 API
+ */
+export const deleteSignature = async (): Promise<ApiResponse<{ message: string }>> => {
+  const response = await apiClient.delete<ApiResponse<{ message: string }>>('/user/signature')
+  return response.data
+}
+
+/**
+ * 사용 가능한 폰트 목록 조회 API
+ */
+export const getAvailableFonts = async (): Promise<ApiResponse<FontsResponse>> => {
+  const response = await apiClient.get<ApiResponse<FontsResponse>>('/user/signature/fonts')
   return response.data
 }

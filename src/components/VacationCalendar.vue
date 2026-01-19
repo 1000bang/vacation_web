@@ -209,20 +209,22 @@ const getVacationsForDate = (date: Date): VacationHistory[] => {
   })
 }
 
-const prevMonth = () => {
+const prevMonth = async () => {
   currentDate.value = new Date(
     currentDate.value.getFullYear(),
     currentDate.value.getMonth() - 1,
     1
   )
+  await loadVacations()
 }
 
-const nextMonth = () => {
+const nextMonth = async () => {
   currentDate.value = new Date(
     currentDate.value.getFullYear(),
     currentDate.value.getMonth() + 1,
     1
   )
+  await loadVacations()
 }
 
 const loadVacations = async () => {

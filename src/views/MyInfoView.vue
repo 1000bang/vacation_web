@@ -125,6 +125,63 @@
       <div v-else class="empty-message">연차 정보를 불러오는 중...</div>
     </div>
 
+    <!-- 서명 관리 섹션 -->
+    <div class="info-section">
+      <div class="section-header">
+        <h2>서명 관리</h2>
+        <div class="signature-actions">
+          <button 
+            v-if="hasSignature && !showSignatureGenerator" 
+            @click="showSignatureGenerator = true" 
+            class="btn btn-edit"
+          >
+            수정
+          </button>
+          <button 
+            v-if="hasSignature && !showSignatureGenerator" 
+            @click="handleDeleteSignature" 
+            class="btn btn-delete"
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+
+      <!-- 서명 미리보기 영역 -->
+      <div v-if="!showSignatureGenerator" class="signature-preview-section">
+        <div v-if="hasSignature && signatureUrl" class="signature-preview">
+          <label>현재 서명</label>
+          <div class="preview-image-container">
+            <img 
+              :src="signatureUrl" 
+              alt="서명 미리보기" 
+              class="signature-preview-image"
+              @error="handleSignatureImageError"
+            />
+          </div>
+        </div>
+        <div v-else class="empty-signature">
+          <p>서명이 등록되지 않았습니다.</p>
+          <button @click="showSignatureGenerator = true" class="btn btn-add">
+            서명 등록
+          </button>
+        </div>
+      </div>
+
+      <!-- 서명 생성 UI -->
+      <div v-if="showSignatureGenerator" class="signature-generator-section">
+        <SignatureGenerator 
+          :default-user-name="userInfo?.name || ''"
+          @saved="handleSignatureSaved"
+        />
+        <div class="signature-generator-actions">
+          <button @click="cancelSignatureGenerator" class="btn btn-cancel">
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 월세 품의 정보 섹션 -->
     <div class="info-section">
       <div class="section-header">
@@ -413,6 +470,7 @@ import {
   type UpdateVacationInfoRequest
 } from '@/api/user'
 import HelpModal from '@/components/HelpModal.vue'
+import SignatureGenerator from '@/components/SignatureGenerator.vue'
 import propPeriodImage from '@/assets/image/help/prop_period.png'
 import propAmountImage from '@/assets/image/help/prop_amount.png'
 import propBillingStartImage from '@/assets/image/help/prop_billingStart.png'
@@ -420,6 +478,7 @@ import apiClient from '@/api/axios'
 import { formatDate, formatNumber, getTodayDate } from '@/utils/formatUtils'
 import { getApprovalStatusName, getApprovalStatusClass } from '@/utils/statusUtils'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { getSignature, deleteSignature } from '@/api/user'
 
 const userInfo = ref<UserInfoResponse | null>(null)
 
@@ -439,6 +498,11 @@ const editableVacationInfo = ref({
   usedVacationDays: 0,
   reservedVacationDays: 0
 })
+
+// 서명 관리 상태
+const hasSignature = ref(false)
+const signatureUrl = ref<string>('')
+const showSignatureGenerator = ref(false)
 
 // 도움말 모달 상태
 const helpModal = reactive<{
@@ -493,6 +557,7 @@ onMounted(async () => {
   await loadUserInfo()
   await loadRentalSupportList()
   await loadVacationInfo()
+  await loadSignature()
 })
 
 const loadUserInfo = async () => {
@@ -921,6 +986,85 @@ const loadVacationInfo = async () => {
     console.error('연차 정보 조회 실패:', error)
     alert('연차 정보를 불러오는데 실패했습니다.')
   }
+}
+
+// 서명 조회
+const loadSignature = async () => {
+  try {
+    const response = await getSignature()
+    if (response.resultCode === '0' && response.resultMsg) {
+      hasSignature.value = response.resultMsg.hasSignature
+      if (response.resultMsg.hasSignature && response.resultMsg.signatureUrl) {
+        // axios를 사용하여 인증 헤더 포함하여 이미지 받기
+        try {
+          const baseURL = apiClient.defaults.baseURL || ''
+          const fullUrl = baseURL + response.resultMsg.signatureUrl
+          
+          // URL에서 실제 경로 추출 (예: /api/user/download/signature/1_signature.png)
+          const urlPath = response.resultMsg.signatureUrl
+          
+          const imageResponse = await apiClient.get(urlPath, {
+            responseType: 'blob'
+          })
+          
+          // Blob을 data URL로 변환
+          const blob = imageResponse.data
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            signatureUrl.value = reader.result as string
+          }
+          reader.readAsDataURL(blob)
+        } catch (imageError) {
+          console.error('서명 이미지 로드 실패:', imageError)
+          signatureUrl.value = ''
+        }
+      } else {
+        signatureUrl.value = ''
+      }
+    }
+  } catch (error) {
+    console.error('서명 조회 실패:', error)
+    hasSignature.value = false
+    signatureUrl.value = ''
+  }
+}
+
+// 서명 저장 완료 처리
+const handleSignatureSaved = async () => {
+  showSignatureGenerator.value = false
+  await loadSignature()
+}
+
+// 서명 삭제
+const handleDeleteSignature = async () => {
+  if (!confirm('정말 서명을 삭제하시겠습니까?')) {
+    return
+  }
+
+  try {
+    const response = await deleteSignature()
+    if (response.resultCode === '0') {
+      alert('서명이 삭제되었습니다.')
+      await loadSignature()
+    } else {
+      alert('서명 삭제에 실패했습니다.')
+    }
+  } catch (error: any) {
+    console.error('서명 삭제 실패:', error)
+    alert(error.response?.data?.resultMsg?.errorMessage || '서명 삭제에 실패했습니다.')
+  }
+}
+
+// 서명 생성 취소
+const cancelSignatureGenerator = () => {
+  showSignatureGenerator.value = false
+}
+
+// 서명 이미지 로드 실패 처리
+const handleSignatureImageError = () => {
+  console.error('서명 이미지 로드 실패')
+  hasSignature.value = false
+  signatureUrl.value = ''
 }
 
 const startEditVacation = () => {
@@ -1438,6 +1582,67 @@ const calculatedRemainingDays = computed(() => {
 
 .btn-remove-file:hover {
   background-color: #c82333;
+}
+
+/* 서명 관리 스타일 */
+.signature-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.signature-preview-section {
+  margin-top: 1rem;
+}
+
+.signature-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.signature-preview label {
+  font-weight: 500;
+  color: #333;
+}
+
+.preview-image-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1rem;
+  background-color: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+}
+
+.signature-preview-image {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  background: transparent;
+}
+
+.empty-signature {
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+
+.empty-signature p {
+  margin-bottom: 1rem;
+}
+
+.signature-generator-section {
+  margin-top: 1rem;
+}
+
+.signature-generator-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
 }
 
 @media (max-width: 768px) {
