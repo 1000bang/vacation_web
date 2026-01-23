@@ -62,7 +62,7 @@
                       반려
                     </button>
                     <button
-                      v-if="vacation.approvalStatus === 'C'"
+                      v-if="vacation.approvalStatus === 'C' || vacation.approvalStatus === 'D'"
                       @click="handleDownloadVacation(vacation.seq, vacation.applicant)"
                       class="btn btn-download btn-small"
                       :disabled="isDownloading === vacation.seq"
@@ -138,7 +138,7 @@
                       반려
                     </button>
                     <button
-                      v-if="expense.approvalStatus === 'C'"
+                      v-if="expense.approvalStatus === 'C' || expense.approvalStatus === 'D'"
                       @click="handleDownloadExpenseClaim(expense.seq, expense.applicant)"
                       class="btn btn-download btn-small"
                       :disabled="isDownloading === expense.seq"
@@ -216,7 +216,7 @@
                       반려
                     </button>
                     <button
-                      v-if="rental.approvalStatus === 'C'"
+                      v-if="rental.approvalStatus === 'C' || rental.approvalStatus === 'D'"
                       @click="handleDownloadRentalApplication(rental.seq, rental.applicant)"
                       class="btn btn-download btn-small"
                       :disabled="isDownloading === rental.seq"
@@ -292,7 +292,7 @@
                       반려
                     </button>
                     <button
-                      v-if="rentalProposal.approvalStatus === 'C'"
+                      v-if="rentalProposal.approvalStatus === 'C' || rentalProposal.approvalStatus === 'D'"
                       @click="handleDownloadRentalProposal(rentalProposal.seq, rentalProposal.applicant)"
                       class="btn btn-download btn-small"
                       :disabled="isDownloading === rentalProposal.seq"
