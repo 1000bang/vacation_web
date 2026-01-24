@@ -65,14 +65,16 @@
             @change="form.team = ''"
             required 
             class="form-input"
+            :disabled="isLoadingTeams"
           >
             <option value="">본부/센터 선택</option>
-            <option value="ITO센터">ITO센터</option>
-            <option value="신사업추진실">신사업추진실</option>
-            <option value="솔루션사업본부">솔루션사업본부</option>
-            <option value="플랫폼사업본부">플랫폼사업본부</option>
-            <option value="서비스사업본부">서비스사업본부</option>
-            <option value="시스템사업본부">시스템사업본부</option>
+            <option
+              v-for="division in getDivisions()"
+              :key="division"
+              :value="division"
+            >
+              {{ division }}
+            </option>
           </select>
         </div>
 
@@ -142,26 +144,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { join, type JoinRequest } from '@/api/user'
+import { join, getDivisionTeamList, type JoinRequest, type DivisionTeamResponse } from '@/api/user'
 
 const router = useRouter()
 
-// 본부/센터별 팀 구조
-const departmentStructure: Record<string, string[]> = {
-  'ITO센터': ['ITO지원팀'],
-  '신사업추진실': ['크레이이티브팀'],
-  '솔루션사업본부': ['솔루션1팀', '솔루션2팀'],
-  '플랫폼사업본부': ['플랫폼1팀', '플랫폼2팀'],
-  '서비스사업본부': ['서비스1팀', '서비스2팀'],
-  '시스템사업본부': ['시스템1팀', '시스템2팀']
-}
+// 본부별 팀 목록 (API에서 가져옴)
+const divisionTeamList = ref<DivisionTeamResponse[]>([])
+const isLoadingTeams = ref(false)
 
 // 본부/센터에 따른 팀 목록 반환
 const getTeamsForDivision = (division: string): string[] => {
-  return departmentStructure[division] || []
+  const divisionTeam = divisionTeamList.value.find(dt => dt.division === division)
+  return divisionTeam ? divisionTeam.teams : []
 }
+
+// 본부 목록 반환
+const getDivisions = (): string[] => {
+  return divisionTeamList.value.map(dt => dt.division)
+}
+
+// 본부/팀 목록 로드
+const loadDivisionTeamList = async () => {
+  isLoadingTeams.value = true
+  try {
+    const response = await getDivisionTeamList()
+    if (response.resultCode === '0' && response.resultMsg) {
+      divisionTeamList.value = response.resultMsg
+    }
+  } catch (error) {
+    console.error('본부/팀 목록 조회 실패:', error)
+    alert('본부/팀 목록을 불러오는데 실패했습니다.')
+  } finally {
+    isLoadingTeams.value = false
+  }
+}
+
+onMounted(() => {
+  loadDivisionTeamList()
+})
 
 const form = ref<JoinRequest>({
   email: '',

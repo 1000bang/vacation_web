@@ -25,13 +25,14 @@
           <label>본부 <span class="required">*</span></label>
           <select
             v-model="editableUserInfo.division"
-            :disabled="!isEditing"
+            :disabled="!isEditing || isLoadingTeams"
             class="form-select"
             required
+            @change="editableUserInfo.team = ''"
           >
             <option value="">선택</option>
             <option
-              v-for="division in Object.keys(departmentStructure)"
+              v-for="division in getDivisions()"
               :key="division"
               :value="division"
             >
@@ -41,12 +42,12 @@
         </div>
 
         <div class="form-group">
-          <label>팀 <span class="required">*</span></label>
+          <label>팀 <span class="required" v-if="editableUserInfo.authVal !== 'bb' && editableUserInfo.authVal !== 'ma'">*</span></label>
           <select
             v-model="editableUserInfo.team"
-            :disabled="!isEditing"
+            :disabled="!isEditing || editableUserInfo.authVal === 'bb' || editableUserInfo.authVal === 'ma'"
             class="form-select"
-            required
+            :required="editableUserInfo.authVal !== 'bb' && editableUserInfo.authVal !== 'ma'"
           >
             <option value="">선택</option>
             <option
@@ -57,6 +58,9 @@
               {{ team }}
             </option>
           </select>
+          <small v-if="editableUserInfo.authVal === 'bb' || editableUserInfo.authVal === 'ma'" class="form-hint">
+            {{ editableUserInfo.authVal === 'bb' ? '본부장' : '마스터' }}은 팀을 선택하지 않습니다.
+          </small>
         </div>
 
         <div class="form-group">
@@ -111,6 +115,7 @@
             v-model="editableUserInfo.authVal"
             :disabled="!isEditing"
             class="form-select"
+            @change="handleAuthValChange"
           >
             <option value="">선택</option>
             <option value="ma">마스터</option>
@@ -217,8 +222,10 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   getUserInfoByUserId,
   updateUserInfoByUserId,
+  getDivisionTeamList,
   type UserInfoResponse,
-  type UpdateUserRequest
+  type UpdateUserRequest,
+  type DivisionTeamResponse
 } from '@/api/user'
 import {
   getUserVacationInfoByUserId,
@@ -258,22 +265,39 @@ const editableUserInfo = ref({
   firstLogin: false
 })
 
-// 본부/센터 구조
-const departmentStructure: Record<string, string[]> = {
-  'ITO센터': ['ITO지원팀'],
-  '신사업추진실': ['크레이이티브팀'],
-  '솔루션사업본부': ['솔루션1팀', '솔루션2팀'],
-  '플랫폼사업본부': ['플랫폼1팀', '플랫폼2팀'],
-  '서비스사업본부': ['서비스1팀', '서비스2팀'],
-  '시스템사업본부': ['시스템1팀', '시스템2팀']
-}
+// 본부별 팀 목록 (API에서 가져옴)
+const divisionTeamList = ref<DivisionTeamResponse[]>([])
+const isLoadingTeams = ref(false)
 
 // 본부/센터에 따른 팀 목록 반환
 const getTeamsForDivision = (division: string): string[] => {
-  return departmentStructure[division] || []
+  const divisionTeam = divisionTeamList.value.find(dt => dt.division === division)
+  return divisionTeam ? divisionTeam.teams : []
+}
+
+// 본부 목록 반환
+const getDivisions = (): string[] => {
+  return divisionTeamList.value.map(dt => dt.division)
+}
+
+// 본부/팀 목록 로드
+const loadDivisionTeamList = async () => {
+  isLoadingTeams.value = true
+  try {
+    const response = await getDivisionTeamList()
+    if (response.resultCode === '0' && response.resultMsg) {
+      divisionTeamList.value = response.resultMsg
+    }
+  } catch (error) {
+    console.error('본부/팀 목록 조회 실패:', error)
+    alert('본부/팀 목록을 불러오는데 실패했습니다.')
+  } finally {
+    isLoadingTeams.value = false
+  }
 }
 
 onMounted(async () => {
+  await loadDivisionTeamList()
   await loadUserInfo()
   await loadVacationInfo()
 })
@@ -331,8 +355,14 @@ const cancelEdit = () => {
 }
 
 const saveUserInfo = async () => {
-  if (!editableUserInfo.value.division || !editableUserInfo.value.team || !editableUserInfo.value.position) {
-    alert('본부, 팀, 직급은 필수 항목입니다.')
+  // 본부장/마스터가 아닌 경우에만 팀 필수 체크
+  if (!editableUserInfo.value.division || !editableUserInfo.value.position) {
+    alert('본부, 직급은 필수 항목입니다.')
+    return
+  }
+  
+  if (editableUserInfo.value.authVal !== 'bb' && editableUserInfo.value.authVal !== 'ma' && !editableUserInfo.value.team) {
+    alert('팀은 필수 항목입니다.')
     return
   }
 
@@ -340,7 +370,7 @@ const saveUserInfo = async () => {
   try {
     const updateRequest: UpdateUserRequest = {
       division: editableUserInfo.value.division,
-      team: editableUserInfo.value.team,
+      team: (editableUserInfo.value.authVal === 'bb' || editableUserInfo.value.authVal === 'ma') ? undefined : editableUserInfo.value.team, // 본부장/마스터는 team을 보내지 않음
       position: editableUserInfo.value.position,
       joinDate: editableUserInfo.value.joinDate || undefined,
       status: editableUserInfo.value.status && editableUserInfo.value.status.trim() !== '' ? editableUserInfo.value.status.trim() : undefined,
@@ -417,6 +447,13 @@ const cancelEditVacation = () => {
       usedVacationDays: vacationInfo.value.usedVacationDays,
       reservedVacationDays: vacationInfo.value.reservedVacationDays
     }
+  }
+}
+
+// 권한 변경 시 처리 (본부장/마스터 선택 시 팀 초기화)
+const handleAuthValChange = () => {
+  if (editableUserInfo.value.authVal === 'bb' || editableUserInfo.value.authVal === 'ma') {
+    editableUserInfo.value.team = ''
   }
 }
 

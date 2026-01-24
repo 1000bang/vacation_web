@@ -66,6 +66,15 @@
           <span class="btn-icon">✅</span>
           <span class="btn-text">나의 결재 목록</span>
         </button>
+        
+        <button 
+          v-if="isMaster" 
+          @click="goToTeamManagement" 
+          class="dashboard-btn admin-btn"
+        >
+          <span class="btn-icon">👥</span>
+          <span class="btn-text">팀 관리</span>
+        </button>
       </div>
 
       <!-- 휴가 캘린더 -->
@@ -103,6 +112,12 @@ const canManageUsers = computed(() => {
   if (!user.value) return false
   const authVal = user.value.authVal
   return authVal === 'ma' || authVal === 'bb' || authVal === 'tj'
+})
+
+const isMaster = computed(() => {
+  // ma(master)만 팀 관리 가능
+  if (!user.value) return false
+  return user.value.authVal === 'ma'
 })
 
 const loadVacationInfo = async () => {
@@ -149,6 +164,10 @@ const goToUserManagement = () => {
 
 const goToApprovalList = () => {
   router.push('/approval-list')
+}
+
+const goToTeamManagement = () => {
+  router.push('/team-management')
 }
 </script>
 

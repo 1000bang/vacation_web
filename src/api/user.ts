@@ -908,3 +908,115 @@ export const getAvailableFonts = async (): Promise<ApiResponse<FontsResponse>> =
   const response = await apiClient.get<ApiResponse<FontsResponse>>('/user/signature/fonts')
   return response.data
 }
+
+// 본부별 팀 목록 응답 타입
+export interface DivisionTeamResponse {
+  division: string
+  teams: string[]
+}
+
+/**
+ * 본부별 팀 목록 조회 API
+ */
+export const getDivisionTeamList = async (): Promise<ApiResponse<DivisionTeamResponse[]>> => {
+  const response = await apiClient.get<ApiResponse<DivisionTeamResponse[]>>('/user/team/list')
+  return response.data
+}
+
+// 팀 관리 타입
+export interface TeamManagement {
+  seq: number
+  division: string
+  team: string | null
+  createdAt: string
+  userCount: number
+}
+
+export interface TeamManagementRequest {
+  division: string
+  team?: string | null
+}
+
+/**
+ * 전체 팀 관리 목록 조회
+ */
+export const getAllTeamManagement = async (): Promise<ApiResponse<TeamManagement[]>> => {
+  const response = await apiClient.get<ApiResponse<TeamManagement[]>>('/team/list')
+  return response.data
+}
+
+/**
+ * 본부별 팀 관리 목록 조회
+ */
+export const getTeamManagementByDivision = async (division: string): Promise<ApiResponse<TeamManagement[]>> => {
+  const response = await apiClient.get<ApiResponse<TeamManagement[]>>(`/team/list/${division}`)
+  return response.data
+}
+
+/**
+ * 팀 관리 생성 (본부 또는 팀 추가)
+ */
+export const createTeamManagement = async (request: TeamManagementRequest): Promise<ApiResponse<TeamManagement>> => {
+  const response = await apiClient.post<ApiResponse<TeamManagement>>('/team', request)
+  return response.data
+}
+
+/**
+ * 팀 관리 수정
+ */
+export const updateTeamManagement = async (seq: number, request: TeamManagementRequest): Promise<ApiResponse<TeamManagement>> => {
+  const response = await apiClient.put<ApiResponse<TeamManagement>>(`/team/${seq}`, request)
+  return response.data
+}
+
+/**
+ * 팀 관리 삭제
+ */
+export const deleteTeamManagement = async (seq: number): Promise<ApiResponse<string>> => {
+  const response = await apiClient.delete<ApiResponse<string>>(`/team/${seq}`)
+  return response.data
+}
+
+// 팀별 사용자 타입
+export interface TeamUser {
+  userId: number
+  name: string
+  position: string
+  authVal: string
+  authValLabel?: string
+}
+
+/**
+ * 팀별 사용자 목록 조회
+ */
+export const getUsersByTeamSeq = async (teamSeq: number): Promise<ApiResponse<TeamUser[]>> => {
+  const response = await apiClient.get<ApiResponse<TeamUser[]>>(`/team/${teamSeq}/users`)
+  return response.data
+}
+
+/**
+ * 사용자 팀 변경
+ */
+export const changeUserTeam = async (userId: number, division: string, team: string | null): Promise<ApiResponse<UserInfoResponse>> => {
+  // 먼저 사용자 정보를 조회하여 기존 position 가져오기
+  const userInfoResponse = await getUserInfoByUserId(userId)
+  const currentUser = userInfoResponse.resultMsg
+  
+  const response = await apiClient.put<ApiResponse<UserInfoResponse>>(`/user/info/${userId}`, {
+    division,
+    team: team || undefined,
+    position: currentUser?.position || '', // 기존 position 유지
+    status: undefined,
+    authVal: undefined,
+    firstLogin: undefined
+  })
+  return response.data
+}
+
+/**
+ * 본부별 사용자 목록 조회 (본부장)
+ */
+export const getUsersByDivision = async (division: string): Promise<ApiResponse<TeamUser[]>> => {
+  const response = await apiClient.get<ApiResponse<TeamUser[]>>(`/team/division/${division}/users`)
+  return response.data
+}

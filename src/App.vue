@@ -13,7 +13,7 @@
         </div>
         <div class="header-right">
           <div v-if="user" class="user-info">
-            <span class="user-name">{{ user.division }}/{{ user.team }} {{ user.name }} {{ user.position }}</span>
+            <span class="user-name">{{ formatUserInfo(user) }}</span>
             <!-- 알람 아이콘 -->
             <div class="alarm-container">
               <button 
@@ -107,6 +107,7 @@ interface User {
   team: string
   position: string
   status: string
+  authVal: string
 }
 
 const user = ref<User | null>(null)
@@ -258,6 +259,15 @@ onUnmounted(() => {
   window.removeEventListener('storage', updateUser)
   window.removeEventListener('user-updated', updateUser)
 })
+
+const formatUserInfo = (user: User): string => {
+  // 본부장(bb) 또는 마스터(ma)인 경우: 본부명 이름 직책
+  if (user.authVal === 'bb' || user.authVal === 'ma') {
+    return `${user.division} ${user.name} ${user.position}`
+  }
+  // 그 외: 본부명 / 팀 이름 직책
+  return `${user.division} / ${user.team} ${user.name} ${user.position}`
+}
 
 const handleMyInfo = () => {
   router.push('/my-info')
