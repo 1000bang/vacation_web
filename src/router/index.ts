@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { AUTH_DIVISION_HEAD, AUTH_MASTER, AUTH_TEAM_LEADER } from '@/constants/auth'
 
 // 동적 import 실패 시 에러 핸들링을 위한 헬퍼 함수
 const loadView = (view: string) => {
@@ -150,7 +151,7 @@ const router = createRouter({
         if (userStr) {
           try {
             const user = JSON.parse(userStr)
-            if (user && user.authVal && (user.authVal === 'tj' || user.authVal === 'bb' || user.authVal === 'ma')) {
+            if (user && user.authVal && (user.authVal === AUTH_TEAM_LEADER || user.authVal === AUTH_DIVISION_HEAD || user.authVal === AUTH_MASTER)) {
               next()
               return
             }

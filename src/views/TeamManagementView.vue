@@ -72,7 +72,7 @@
                   <span class="user-number">{{ getDivisionUserNumber(division.division, user.userId) }}.</span>
                   <span class="user-name">{{ user.name }}</span>
                   <span class="user-position">{{ user.position }}</span>
-                  <span class="user-role">{{ user.authVal === 'ma' ? '마스터' : '본부장' }}</span>
+                  <span class="user-role">{{ user.authVal === AUTH_MASTER ? '마스터' : '본부장' }}</span>
                 </div>
               </div>
             </div>
@@ -143,7 +143,7 @@
                       <span class="user-number">{{ getTeamUserNumber(team.seq, user.userId) }}.</span>
                       <span class="user-name">{{ user.name }}</span>
                       <span class="user-position">{{ user.position }}</span>
-                      <span class="user-role">{{ user.authVal === 'tj' ? '팀장' : '팀원' }}</span>
+                      <span class="user-role">{{ user.authVal === AUTH_TEAM_LEADER ? '팀장' : '팀원' }}</span>
                     </div>
                   </div>
                   <div v-if="teamUsers[team.seq].length === 0" class="no-users">
@@ -233,6 +233,7 @@ import {
   type TeamManagementRequest,
   type TeamUser
 } from '@/api/user'
+import { AUTH_MASTER, AUTH_TEAM_LEADER } from '@/constants/auth'
 
 const teamList = ref<TeamManagement[]>([])
 const showModal = ref(false)

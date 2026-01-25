@@ -95,6 +95,7 @@ import myPageImage from '@/assets/image/logo/user.png'
 import logoutImage from '@/assets/image/logo/logout.png'
 import alertImage from '@/assets/image/logo/alert.png'
 import { getUnreadAlarms, getAllAlarms, markAlarmAsRead, markAllAlarmsAsRead, type UserAlarm } from '@/api/alarm'
+import { AUTH_DIVISION_HEAD, AUTH_MASTER } from '@/constants/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -262,7 +263,7 @@ onUnmounted(() => {
 
 const formatUserInfo = (user: User): string => {
   // 본부장(bb) 또는 마스터(ma)인 경우: 본부명 이름 직책
-  if (user.authVal === 'bb' || user.authVal === 'ma') {
+  if (user.authVal === AUTH_DIVISION_HEAD || user.authVal === AUTH_MASTER) {
     return `${user.division} ${user.name} ${user.position}`
   }
   // 그 외: 본부명 / 팀 이름 직책

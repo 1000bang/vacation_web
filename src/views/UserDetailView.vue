@@ -42,12 +42,12 @@
         </div>
 
         <div class="form-group">
-          <label>팀 <span class="required" v-if="editableUserInfo.authVal !== 'bb' && editableUserInfo.authVal !== 'ma'">*</span></label>
+          <label>팀 <span class="required" v-if="editableUserInfo.authVal !== AUTH_DIVISION_HEAD && editableUserInfo.authVal !== AUTH_MASTER">*</span></label>
           <select
             v-model="editableUserInfo.team"
-            :disabled="!isEditing || editableUserInfo.authVal === 'bb' || editableUserInfo.authVal === 'ma'"
+            :disabled="!isEditing || editableUserInfo.authVal === AUTH_DIVISION_HEAD || editableUserInfo.authVal === AUTH_MASTER"
             class="form-select"
-            :required="editableUserInfo.authVal !== 'bb' && editableUserInfo.authVal !== 'ma'"
+            :required="editableUserInfo.authVal !== AUTH_DIVISION_HEAD && editableUserInfo.authVal !== AUTH_MASTER"
           >
             <option value="">선택</option>
             <option
@@ -58,8 +58,8 @@
               {{ team }}
             </option>
           </select>
-          <small v-if="editableUserInfo.authVal === 'bb' || editableUserInfo.authVal === 'ma'" class="form-hint">
-            {{ editableUserInfo.authVal === 'bb' ? '본부장' : '마스터' }}은 팀을 선택하지 않습니다.
+          <small v-if="editableUserInfo.authVal === AUTH_DIVISION_HEAD || editableUserInfo.authVal === AUTH_MASTER" class="form-hint">
+            {{ editableUserInfo.authVal === AUTH_DIVISION_HEAD ? '본부장' : '마스터' }}은 팀을 선택하지 않습니다.
           </small>
         </div>
 
@@ -118,10 +118,10 @@
             @change="handleAuthValChange"
           >
             <option value="">선택</option>
-            <option value="ma">마스터</option>
-            <option value="bb">본부장</option>
-            <option value="tj">팀장</option>
-            <option value="tw">팀원</option>
+            <option :value="AUTH_MASTER">마스터</option>
+            <option :value="AUTH_DIVISION_HEAD">본부장</option>
+            <option :value="AUTH_TEAM_LEADER">팀장</option>
+            <option :value="AUTH_TEAM_MEMBER">팀원</option>
           </select>
         </div>
 
@@ -233,6 +233,7 @@ import {
   type UserVacationInfoResponse,
   type UpdateVacationInfoRequest
 } from '@/api/vacation'
+import { AUTH_DIVISION_HEAD, AUTH_MASTER, AUTH_TEAM_LEADER, AUTH_TEAM_MEMBER } from '@/constants/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -361,7 +362,7 @@ const saveUserInfo = async () => {
     return
   }
   
-  if (editableUserInfo.value.authVal !== 'bb' && editableUserInfo.value.authVal !== 'ma' && !editableUserInfo.value.team) {
+  if (editableUserInfo.value.authVal !== AUTH_DIVISION_HEAD && editableUserInfo.value.authVal !== AUTH_MASTER && !editableUserInfo.value.team) {
     alert('팀은 필수 항목입니다.')
     return
   }
@@ -370,7 +371,7 @@ const saveUserInfo = async () => {
   try {
     const updateRequest: UpdateUserRequest = {
       division: editableUserInfo.value.division,
-      team: (editableUserInfo.value.authVal === 'bb' || editableUserInfo.value.authVal === 'ma') ? undefined : editableUserInfo.value.team, // 본부장/마스터는 team을 보내지 않음
+      team: (editableUserInfo.value.authVal === AUTH_DIVISION_HEAD || editableUserInfo.value.authVal === AUTH_MASTER) ? undefined : editableUserInfo.value.team, // 본부장/마스터는 team을 보내지 않음
       position: editableUserInfo.value.position,
       joinDate: editableUserInfo.value.joinDate || undefined,
       status: editableUserInfo.value.status && editableUserInfo.value.status.trim() !== '' ? editableUserInfo.value.status.trim() : undefined,
@@ -452,7 +453,7 @@ const cancelEditVacation = () => {
 
 // 권한 변경 시 처리 (본부장/마스터 선택 시 팀 초기화)
 const handleAuthValChange = () => {
-  if (editableUserInfo.value.authVal === 'bb' || editableUserInfo.value.authVal === 'ma') {
+  if (editableUserInfo.value.authVal === AUTH_DIVISION_HEAD || editableUserInfo.value.authVal === AUTH_MASTER) {
     editableUserInfo.value.team = ''
   }
 }

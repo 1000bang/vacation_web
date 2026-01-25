@@ -47,6 +47,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUserInfoList } from '@/api/user'
+import { AUTH_LABELS } from '@/constants/auth'
 
 const router = useRouter()
 
@@ -91,15 +92,7 @@ const getStatusLabel = (status: string) => {
   return statusMap[status] || status
 }
 
-const getAuthValLabel = (authVal: string) => {
-  const authMap: Record<string, string> = {
-    'ma': '마스터',
-    'bb': '본부장',
-    'tj': '팀장',
-    'tw': '팀원'
-  }
-  return authMap[authVal] || authVal
-}
+const getAuthValLabel = (authVal: string) => AUTH_LABELS[authVal] || authVal
 
 const goToUserDetail = (userId: number) => {
   router.push(`/user-management/${userId}`)

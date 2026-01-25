@@ -90,6 +90,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getUserVacationInfo, type UserVacationInfoResponse } from '@/api/user'
 import VacationCalendar from '@/components/VacationCalendar.vue'
+import { AUTH_DIVISION_HEAD, AUTH_MASTER, AUTH_TEAM_LEADER } from '@/constants/auth'
 
 const router = useRouter()
 
@@ -108,16 +109,14 @@ const user = ref<User | null>(null)
 const vacationInfo = ref<UserVacationInfoResponse | null>(null)
 
 const canManageUsers = computed(() => {
-  // ma(master), bb(bonbujang), tj(teamjang)만 사용자 관리 가능
   if (!user.value) return false
   const authVal = user.value.authVal
-  return authVal === 'ma' || authVal === 'bb' || authVal === 'tj'
+  return authVal === AUTH_MASTER || authVal === AUTH_DIVISION_HEAD || authVal === AUTH_TEAM_LEADER
 })
 
 const isMaster = computed(() => {
-  // ma(master)만 팀 관리 가능
   if (!user.value) return false
-  return user.value.authVal === 'ma'
+  return user.value.authVal === AUTH_MASTER
 })
 
 const loadVacationInfo = async () => {

@@ -294,6 +294,7 @@ import {
 } from '@/api/user'
 import apiClient from '@/api/axios'
 import { getTodayDate } from '@/utils/formatUtils'
+import { getApiErrorMessage } from '@/utils/errorUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -889,13 +890,7 @@ const submitVacationApplication = async () => {
     }
   } catch (error: any) {
     console.error(isEditMode.value ? '휴가 수정 실패:' : '휴가 신청 실패:', error)
-    // BaseController를 통한 에러 응답: error.response.data.resultMsg.errorMessage
-    // GlobalExceptionHandler를 통한 에러 응답: error.response.data.errorMessage
-    const errorMessage = error.response?.data?.resultMsg?.errorMessage || 
-                        error.response?.data?.errorMessage || 
-                        error.message || 
-                        (isEditMode.value ? '휴가 수정에 실패했습니다.' : '휴가 신청에 실패했습니다.')
-    alert(errorMessage)
+    alert(getApiErrorMessage(error, isEditMode.value ? '휴가 수정에 실패했습니다.' : '휴가 신청에 실패했습니다.'))
   } finally {
     isSubmitting.value = false
   }

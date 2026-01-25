@@ -1,6 +1,6 @@
 import apiClient from './axios'
+import type { ApiResponse } from './types'
 
-// 알람 타입
 export interface UserAlarm {
   seq: number
   userId: number
@@ -11,14 +11,6 @@ export interface UserAlarm {
   isRead: boolean
   redirectUrl: string
   createdAt: string
-}
-
-// API 응답 타입
-export interface ApiResponse<T> {
-  transactionId: string
-  resultCode: string
-  resultMsg: T
-  messageTemplateId?: string
 }
 
 /**
