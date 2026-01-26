@@ -163,6 +163,38 @@
           <button @click="openAddDivisionModal" class="btn btn-primary">첫 본부 추가하기</button>
         </div>
       </div>
+      
+      <!-- 팀 미배정 사용자 카드 -->
+      <div 
+        v-if="unassignedUsers.length > 0"
+        class="unassigned-users-card"
+        :class="{ 'drag-over': dragOverUnassigned }"
+        @dragover.prevent="handleDragOverUnassigned($event)"
+        @dragleave="handleDragLeaveUnassigned($event)"
+        @drop.prevent="handleDropToUnassigned($event)"
+      >
+        <div class="unassigned-header">
+          <h2 class="unassigned-title">팀 미배정 사용자</h2>
+          <span class="user-count">{{ unassignedUsers.length }}명</span>
+        </div>
+        <div class="unassigned-users-list">
+          <div 
+            v-for="user in unassignedUsers" 
+            :key="user.userId"
+            class="user-item"
+            :draggable="true"
+            @dragstart="handleDragStartUnassigned($event, user)"
+            @dragend="handleDragEnd"
+          >
+            <div class="user-info">
+              <span class="user-number">{{ getUnassignedUserNumber(user.userId) }}.</span>
+              <span class="user-name">{{ user.name }}</span>
+              <span class="user-position">{{ user.position }}</span>
+              <span class="user-role">{{ getUserRoleLabel(user.authVal) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 추가/수정 모달 -->
@@ -229,11 +261,13 @@ import {
   getUsersByTeamSeq,
   getUsersByDivision,
   changeUserTeam,
+  getUserInfoList,
   type TeamManagement,
   type TeamManagementRequest,
-  type TeamUser
+  type TeamUser,
+  type UserListItem
 } from '@/api/user'
-import { AUTH_MASTER, AUTH_TEAM_LEADER } from '@/constants/auth'
+import { AUTH_MASTER, AUTH_TEAM_LEADER, AUTH_DIVISION_HEAD, AUTH_TEAM_MEMBER } from '@/constants/auth'
 
 const teamList = ref<TeamManagement[]>([])
 const showModal = ref(false)
@@ -244,10 +278,13 @@ const selectedTeamSeq = ref<number | null>(null)
 const selectedDivision = ref<string | null>(null)
 const teamUsers = ref<Record<number, TeamUser[]>>({})
 const divisionUsers = ref<Record<string, TeamUser[]>>({})
+const unassignedUsers = ref<UserListItem[]>([])
 const draggedUser = ref<{ user: TeamUser; sourceTeam: TeamManagement } | null>(null)
 const draggedDivisionUser = ref<{ user: TeamUser; sourceDivision: string } | null>(null)
+const draggedUnassignedUser = ref<{ user: UserListItem } | null>(null)
 const dragOverTeamSeq = ref<number | null>(null)
 const dragOverDivision = ref<string | null>(null)
+const dragOverUnassigned = ref(false)
 
 const form = ref<TeamManagementRequest>({
   division: '',
@@ -318,6 +355,9 @@ const loadTeamList = async () => {
     for (const division of divisions) {
       await loadDivisionUsers(division)
     }
+    
+    // 팀 미배정 사용자 로드
+    await loadUnassignedUsers()
   } catch (error) {
     console.error('팀 목록 조회 실패:', error)
     alert('팀 목록을 불러오는데 실패했습니다.')
@@ -483,10 +523,38 @@ const getDivisionUserNumber = (division: string, userId: number): number => {
   return users.findIndex(u => u.userId === userId) + 1
 }
 
+// 팀 미배정 사용자 로드
+const loadUnassignedUsers = async () => {
+  try {
+    const response = await getUserInfoList()
+    const allUsers = response.resultMsg || []
+    // team이 null이거나 빈 문자열인 사용자 필터링 (본부장/마스터 제외)
+    unassignedUsers.value = allUsers.filter(user => 
+      (!user.team || user.team.trim() === '') && 
+      user.authVal !== AUTH_DIVISION_HEAD && 
+      user.authVal !== AUTH_MASTER
+    )
+  } catch (error) {
+    console.error('팀 미배정 사용자 조회 실패:', error)
+    unassignedUsers.value = []
+  }
+}
+
+const getUnassignedUserNumber = (userId: number): number => {
+  return unassignedUsers.value.findIndex(u => u.userId === userId) + 1
+}
+
+const getUserRoleLabel = (authVal: string): string => {
+  if (authVal === AUTH_TEAM_LEADER) return '팀장'
+  if (authVal === AUTH_TEAM_MEMBER) return '팀원'
+  return authVal
+}
+
 const handleDragStart = (event: DragEvent, user: TeamUser, team: TeamManagement) => {
   if (!event.dataTransfer) return
   draggedUser.value = { user, sourceTeam: team }
   draggedDivisionUser.value = null
+  draggedUnassignedUser.value = null
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', user.userId.toString())
   
@@ -500,6 +568,21 @@ const handleDragStartDivision = (event: DragEvent, user: TeamUser, division: str
   if (!event.dataTransfer) return
   draggedDivisionUser.value = { user, sourceDivision: division }
   draggedUser.value = null
+  draggedUnassignedUser.value = null
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', user.userId.toString())
+  
+  // 드래그 중인 요소 스타일 변경
+  if (event.target instanceof HTMLElement) {
+    event.target.style.opacity = '0.5'
+  }
+}
+
+const handleDragStartUnassigned = (event: DragEvent, user: UserListItem) => {
+  if (!event.dataTransfer) return
+  draggedUnassignedUser.value = { user }
+  draggedUser.value = null
+  draggedDivisionUser.value = null
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', user.userId.toString())
   
@@ -519,6 +602,7 @@ const handleDragEnd = (event: DragEvent) => {
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
   dragOverTeamSeq.value = null
   dragOverDivision.value = null
+  dragOverUnassigned.value = false
 }
 
 const handleDragOver = (event: DragEvent, teamSeq: number | null = null, division: string | null = null) => {
@@ -568,11 +652,109 @@ const handleDragLeave = (event: DragEvent) => {
   // 드래그 오버 상태 초기화
   dragOverTeamSeq.value = null
   dragOverDivision.value = null
+  dragOverUnassigned.value = false
+}
+
+const handleDragOverUnassigned = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverUnassigned.value = true
+  
+  // 다른 드래그 오버 상태 초기화
+  dragOverTeamSeq.value = null
+  dragOverDivision.value = null
+  document.querySelectorAll('.drag-over').forEach(el => {
+    if (!el.classList.contains('unassigned-users-card')) {
+      el.classList.remove('drag-over')
+    }
+  })
+}
+
+const handleDragLeaveUnassigned = (event: DragEvent) => {
+  const relatedTarget = event.relatedTarget as HTMLElement
+  const currentTarget = event.currentTarget as HTMLElement
+  
+  if (relatedTarget && currentTarget.contains(relatedTarget)) {
+    return
+  }
+  
+  dragOverUnassigned.value = false
+}
+
+const handleDropToUnassigned = async (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // 팀에서 드래그한 경우만 처리 (본부장은 팀 미배정으로 이동 불가)
+  if (!draggedUser.value) {
+    draggedUnassignedUser.value = null
+    draggedDivisionUser.value = null
+    dragOverUnassigned.value = false
+    return
+  }
+  
+  const { user, sourceTeam } = draggedUser.value
+  
+  if (confirm(`${user.name}님을 팀 미배정 상태로 변경하시겠습니까?`)) {
+    try {
+      await changeUserTeam(user.userId, sourceTeam.division, null)
+      
+      // 즉시 로컬 상태 업데이트
+      if (teamUsers.value[sourceTeam.seq]) {
+        teamUsers.value[sourceTeam.seq] = teamUsers.value[sourceTeam.seq].filter(u => u.userId !== user.userId)
+      }
+      
+      // 팀 목록 새로고침
+      await loadTeamList()
+      
+      alert('팀이 변경되었습니다.')
+    } catch (error: any) {
+      console.error('팀 변경 실패:', error)
+      const errorMessage = error.response?.data?.resultMsg?.errorMessage || '팀 변경 중 오류가 발생했습니다.'
+      alert(errorMessage)
+    }
+  }
+  
+  draggedUser.value = null
+  dragOverUnassigned.value = false
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
 }
 
 const handleDropToDivision = async (event: DragEvent, targetDivision: string) => {
   event.preventDefault()
   event.stopPropagation()
+  
+  // 팀 미배정 사용자에서 드래그한 경우
+  if (draggedUnassignedUser.value) {
+    const { user } = draggedUnassignedUser.value
+    
+    if (confirm(`${user.name}님을 ${targetDivision} 본부로 이동하시겠습니까?`)) {
+      try {
+        await changeUserTeam(user.userId, targetDivision, null)
+        
+        // 즉시 로컬 상태 업데이트
+        unassignedUsers.value = unassignedUsers.value.filter(u => u.userId !== user.userId)
+        
+        // 팀 목록 새로고침
+        await loadTeamList()
+        
+        alert('본부가 변경되었습니다.')
+      } catch (error: any) {
+        console.error('본부 변경 실패:', error)
+        const errorMessage = error.response?.data?.resultMsg?.errorMessage || '본부 변경 중 오류가 발생했습니다.'
+        alert(errorMessage)
+      }
+    }
+    
+    draggedUnassignedUser.value = null
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
+    dragOverTeamSeq.value = null
+    dragOverDivision.value = null
+    return
+  }
   
   // 본부장에서 드래그한 경우
   if (draggedDivisionUser.value) {
@@ -707,6 +889,48 @@ const handleDropToDivision = async (event: DragEvent, targetDivision: string) =>
 const handleDrop = async (event: DragEvent, targetTeam: TeamManagement) => {
   event.preventDefault()
   event.stopPropagation()
+  
+  // 팀 미배정 사용자에서 드래그한 경우
+  if (draggedUnassignedUser.value) {
+    const { user } = draggedUnassignedUser.value
+    
+    if (confirm(`${user.name}님을 ${targetTeam.division} / ${targetTeam.team}로 이동하시겠습니까?`)) {
+      try {
+        await changeUserTeam(user.userId, targetTeam.division, targetTeam.team || null)
+        
+        // 즉시 로컬 상태 업데이트
+        unassignedUsers.value = unassignedUsers.value.filter(u => u.userId !== user.userId)
+        
+        // 팀 목록 새로고침
+        await loadTeamList()
+        
+        // 타겟 팀이 선택되어 있지 않으면 자동으로 선택하여 사용자 목록 표시
+        if (selectedTeamSeq.value !== targetTeam.seq && targetTeam.seq) {
+          selectedTeamSeq.value = targetTeam.seq
+          if (!teamUsers.value[targetTeam.seq]) {
+            try {
+              const response = await getUsersByTeamSeq(targetTeam.seq)
+              teamUsers.value[targetTeam.seq] = response.resultMsg || []
+            } catch (error) {
+              console.error('타겟 팀 사용자 목록 조회 실패:', error)
+            }
+          }
+        }
+        
+        alert('팀이 변경되었습니다.')
+      } catch (error: any) {
+        console.error('팀 변경 실패:', error)
+        const errorMessage = error.response?.data?.resultMsg?.errorMessage || '팀 변경 중 오류가 발생했습니다.'
+        alert(errorMessage)
+      }
+    }
+    
+    draggedUnassignedUser.value = null
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
+    dragOverTeamSeq.value = null
+    dragOverDivision.value = null
+    return
+  }
   
   // 본부장에서 드래그한 경우는 팀으로 이동 불가
   if (draggedDivisionUser.value) {
@@ -861,10 +1085,11 @@ onMounted(() => {
 }
 
 .division-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
+  border: 2px solid #e0e7ff;
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -874,19 +1099,21 @@ onMounted(() => {
 }
 
 .division-card-expanded {
-  border: 2px solid rgba(255, 255, 255, 0.5) !important;
+  border: 2px solid #667eea !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15) !important;
 }
 
 .division-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: #c7d2fe;
 }
 
 .division-card.drag-over {
-  background: linear-gradient(135deg, #7c8ef0 0%, #8a5fb8 100%) !important;
-  border: 3px dashed white !important;
+  background: #f0f4ff !important;
+  border: 3px dashed #667eea !important;
   transform: scale(1.01);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5) !important;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.25) !important;
 }
 
 .division-header {
@@ -906,15 +1133,14 @@ onMounted(() => {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: #2c3e50;
 }
 
 .user-count {
-  background: rgba(255, 255, 255, 0.2);
+  background: #e0e7ff;
   padding: 6px 12px;
   border-radius: 20px;
-  color: white;
+  color: #4f46e5;
   font-size: 14px;
   font-weight: 500;
 }
@@ -929,8 +1155,8 @@ onMounted(() => {
   padding-left: 20px;
   margin-top: 16px;
   padding-top: 16px;
-  border-left: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  border-left: 3px solid #e0e7ff;
+  border-top: 2px solid #e0e7ff;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -979,9 +1205,9 @@ onMounted(() => {
 .division-users-list {
   margin-bottom: 20px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: #f8f9fa;
   border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 2px solid #e0e7ff;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -990,8 +1216,8 @@ onMounted(() => {
 }
 
 .division-users-list.drag-over {
-  background: #e3f2fd !important;
-  border-color: white !important;
+  background: #f0f4ff !important;
+  border-color: #667eea !important;
   border-style: dashed !important;
   transform: scale(1.02);
 }
@@ -1151,7 +1377,7 @@ onMounted(() => {
 .no-teams {
   padding: 16px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: #6c757d;
   font-style: italic;
   font-size: 14px;
 }
@@ -1325,5 +1551,51 @@ onMounted(() => {
 
 .modal-footer .btn {
   min-width: 80px;
+}
+
+/* 팀 미배정 사용자 카드 */
+.unassigned-users-card {
+  margin-top: 32px;
+  background: #ffffff;
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+  transition: all 0.2s;
+}
+
+.unassigned-users-card:hover {
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.25);
+  border-color: #f59e0b;
+}
+
+.unassigned-users-card.drag-over {
+  background: #fffbeb !important;
+  border: 3px dashed #f59e0b !important;
+  transform: scale(1.01);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.3) !important;
+}
+
+.unassigned-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #fef3c7;
+}
+
+.unassigned-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.unassigned-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 60px;
 }
 </style>
