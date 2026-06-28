@@ -236,7 +236,7 @@
               type="text" 
               class="form-control"
               placeholder="팀명을 입력하세요"
-              :required="isAddingTeam || editingTeam"
+              :required="isAddingTeam || !!editingTeam"
             />
           </div>
         </div>

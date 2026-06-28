@@ -64,7 +64,7 @@
     <div class="info-section">
       <div class="section-header">
         <h2>연차 정보</h2>
-        <template v-if="vacationInfo?.firstLogin">
+        <template v-if="vacationInfo?.isFirstLogin">
           <button 
             v-if="!isEditingVacation" 
             @click="startEditVacation" 
@@ -84,7 +84,7 @@
         <div class="vacation-item">
           <span class="vacation-label">금년 발생 연차:</span>
           <input 
-            v-if="isEditingVacation && vacationInfo?.firstLogin" 
+            v-if="isEditingVacation && vacationInfo?.isFirstLogin" 
             type="number" 
             v-model.number="editableVacationInfo.annualVacationDays" 
             step="0.5"
@@ -96,7 +96,7 @@
         <div class="vacation-item">
           <span class="vacation-label">사용 연차:</span>
           <input 
-            v-if="isEditingVacation && vacationInfo?.firstLogin" 
+            v-if="isEditingVacation && vacationInfo?.isFirstLogin" 
             type="number" 
             v-model.number="editableVacationInfo.usedVacationDays" 
             step="0.5"
@@ -108,7 +108,7 @@
         <div class="vacation-item">
           <span class="vacation-label">예약중 연차:</span>
           <input 
-            v-if="isEditingVacation && vacationInfo?.firstLogin" 
+            v-if="isEditingVacation && vacationInfo?.isFirstLogin" 
             type="number" 
             v-model.number="editableVacationInfo.reservedVacationDays" 
             step="0.5"
