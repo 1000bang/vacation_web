@@ -76,7 +76,7 @@ export interface UserInfoResponse {
 
 export interface UpdateUserRequest {
   division: string
-  team: string
+  team?: string
   position: string
   joinDate?: string
   status?: string
